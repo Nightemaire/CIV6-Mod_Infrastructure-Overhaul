@@ -17,24 +17,7 @@
 		<Row Tag="LOC_HUD_GROWTH_LENS_TOOLTIP">
 			<Text>Highlights information about tile utilization growth</Text>
 		</Row>
-		<Row Tag="LOC_HUD_ROUTES_LENS">
-			<Text>Infrastructure</Text>
-		</Row>
-		<Row Tag="LOC_HUD_ROUTES_LENS_TOOLTIP">
-			<Text>Highlights tiles with transportation infrastructure</Text>
-		</Row>
-		<Row Tag="LOC_HUD_SUBTYPE_LENS">
-			<Text>Route Subtypes</Text>
-		</Row>
-		<Row Tag="LOC_HUD_SUBTYPE_LENS_TOOLTIP">
-			<Text>Highlights subtypes of routes</Text>
-		</Row>
-		<Row Tag="LOC_HUD_AREA_LENS">
-			<Text>Areas</Text>
-		</Row>
-		<Row Tag="LOC_HUD_AREA_LENS_TOOLTIP">
-			<Text>Highlights map areas</Text>
-		</Row>
+		
 		<!-- UTILIZATION -->
 		<Row Tag="LOC_TOOLTIP_UTILIZATION_LOWEST">
 			<Text>Less than 20</Text>
@@ -81,38 +64,6 @@
 		</Row>
 		<Row Tag="LOC_TOOLTIP_GROWTH_HIGHEST">
 			<Text>Rapidly Increasing</Text>
-		</Row>
-		<!-- ROUTES -->
-		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_ANCIENT">
-			<Text>Ancient</Text>
-		</Row>
-		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_MEDIEVAL">
-			<Text>Medieval</Text>
-		</Row>
-		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_INDUSTRIAL">
-			<Text>Industrial</Text>
-		</Row>
-		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_MODERN">
-			<Text>Modern</Text>
-		</Row>
-		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_RAILROAD">
-			<Text>Railroad</Text>
-		</Row>
-		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_PILLAGED">
-			<Text>Destroyed Road</Text>
-		</Row>
-		<!-- SUBTYPES -->
-		<Row Tag="LOC_TOOLTIP_LENS_SUBTYPE_PRIMARY">
-			<Text>Primary</Text>
-		</Row>
-		<Row Tag="LOC_TOOLTIP_LENS_SUBTYPE_SECONDARY">
-			<Text>Secondary</Text>
-		</Row>
-		<Row Tag="LOC_TOOLTIP_LENS_SUBTYPE_TERTIARY">
-			<Text>Tertiary</Text>
-		</Row>
-		<Row Tag="LOC_TOOLTIP_LENS_SUBTYPE_OTHER">
-			<Text>Other</Text>
 		</Row>
 	</BaseGameText>
 </GameData>

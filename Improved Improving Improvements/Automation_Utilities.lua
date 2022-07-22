@@ -22,7 +22,7 @@ function FindFastestLandRoute(startPlot : object, endPlot : object, range)
 	local ClosedList = {}
 
 	-- A* Pathfinding Functions
-	function OpenPlot(plot : object, initialCost)
+	local function OpenPlot(plot : object, initialCost)
 		local G = 0
 		local H = Map.GetPlotDistance(startPlot:GetX(), startPlot:GetY(), endPlot:GetX(), endPlot:GetY())
 		local F = G + H
@@ -38,7 +38,7 @@ function FindFastestLandRoute(startPlot : object, endPlot : object, range)
 			"F"		= F
 		}
 	end
-	function UpdatePlot(plot : object, newCost)
+	local function UpdatePlot(plot : object, newCost)
 		-- See if the plot exists in the open list, but not the closed list
 		if OpenList[plot:GetID()] ~= nil  and ClosedList[plot:GetID()] == nil then
 			local oldF = OpenList[plot:GetID()].F
@@ -51,7 +51,7 @@ function FindFastestLandRoute(startPlot : object, endPlot : object, range)
 			end
 		end
 	end
-	function ClosePlot(plot : object)
+	local function ClosePlot(plot : object)
 		local thisID = plot:GetID()
 		local thisEntry = OpenList[thisID]
 		local thisCost = thisEntry.G
@@ -76,7 +76,7 @@ function FindFastestLandRoute(startPlot : object, endPlot : object, range)
 			end
 		end
 	end
-	function GetNextPlot()
+	local function GetNextPlot()
 		local Fmin = 99999
 		local Gmax = 0
 		local nextEntry = nil

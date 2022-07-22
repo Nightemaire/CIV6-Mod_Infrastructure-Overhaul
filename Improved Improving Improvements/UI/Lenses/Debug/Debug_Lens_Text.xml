@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Utilization_Lens_Text -->
+<!-- Author: Nightemaire -->
+<!-- DateCreated: 6/26/2022 14:08:44 -->
+
+<GameData>
+	<BaseGameText>
+		
+		<Row Tag="LOC_HUD_AREA_LENS">
+			<Text>Areas</Text>
+		</Row>
+		<Row Tag="LOC_HUD_AREA_LENS_TOOLTIP">
+			<Text>Highlights map areas</Text>
+		</Row>
+		
+	</BaseGameText>
+</GameData>

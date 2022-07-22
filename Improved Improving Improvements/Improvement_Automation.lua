@@ -6,7 +6,6 @@
 -- - 
 --
 -- IDEA LIST:
--- - [DONE!] Notify player when a tile is automatically improved
 --	- Settings for what can be auto-improved (Luxury, strategic, bonus, forest, hills)
 --	-	- Maybe let cities prioritize different things?
 --	- Slash utilization on pillage
@@ -16,7 +15,6 @@
 print("INITIATING IMPROVED IMPROVING IMPROVEMENTS IMMEDIATELY!");
 
 include "AutoImprovements_Config.lua";
-include "Automation_Utilities.lua";
 include "Automation_Growth_Updates.lua";
 
 -- ===========================================================================

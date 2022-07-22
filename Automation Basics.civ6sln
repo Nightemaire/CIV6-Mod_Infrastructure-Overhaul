@@ -5,7 +5,7 @@ VisualStudioVersion = 12.0.21005.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{5DAE07AF-E217-45C1-8DE7-FF99D6011E8A}") = "Auto Improvements", "Improved Improving Improvements\Auto Improvements.civ6proj", "{3795B02A-7E06-4BC1-A330-083B19760E63}"
 EndProject
-Project("{5DAE07AF-E217-45C1-8DE7-FF99D6011E8A}") = "City Expansion", "..\City Expansion\City Expansion\City Expansion.civ6proj", "{00711803-A9C2-41DA-8CC7-6822B51DCD10}"
+Project("{5DAE07AF-E217-45C1-8DE7-FF99D6011E8A}") = "Organic Expansion", "..\City Expansion\City Expansion\Organic Expansion.civ6proj", "{00711803-A9C2-41DA-8CC7-6822B51DCD10}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

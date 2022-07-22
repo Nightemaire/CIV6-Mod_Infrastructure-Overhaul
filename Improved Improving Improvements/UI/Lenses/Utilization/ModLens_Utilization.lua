@@ -8,14 +8,12 @@
 -- by Astog
 --
 -- ===========================================================================
-
 include "AutoImprovements_Config.lua";
 
+print("Initializing Utilization Lens UI Script");
 -- ===========================================================================
 -- Constants
 -- ===========================================================================
-print("Initializing Utilization Lens UI Script");
-
 local ColorGradient = {}
 ColorGradient[1]			= UI.GetColorValue("COLOR_UTIL_GRADIENT_1")
 ColorGradient[2]			= UI.GetColorValue("COLOR_UTIL_GRADIENT_2")
@@ -29,13 +27,6 @@ local TownshipColor			= UI.GetColorValue("COLOR_UTIL_TOWNSHIP")
 local CityColor				= UI.GetColorValue("COLOR_UTIL_CITY")
 local MetroColor			= UI.GetColorValue("COLOR_UTIL_METROPOLIS")
 
-local PillagedRoadColor		= UI.GetColorValue("COLOR_ROUTE_PILLAGED")
-local AncientRoadColor		= UI.GetColorValue("COLOR_ROUTE_ANCIENT")
-local MedievalRoadColor		= UI.GetColorValue("COLOR_ROUTE_MEDIEVAL")
-local IndustrialRoadColor	= UI.GetColorValue("COLOR_ROUTE_INDUSTRIAL")
-local ModernRoadColor		= UI.GetColorValue("COLOR_ROUTE_MODERN")
-local RailroadColor			= UI.GetColorValue("COLOR_ROUTE_RAILROAD")
-
 local UTIL_LENS_NAME = "UTIL_LENS"
 local GROWTH_LENS_NAME = "GROWTH_LENS"
 local ROUTES_LENS_NAME = "ROUTES_LENS"
@@ -44,17 +35,6 @@ local AREA_LENS_NAME = "AREA_LENS"
 
 local UTILIZATION_LENS_LAYER = UILens.CreateLensLayerHash("Hex_Coloring_Appeal_Level")
 local GROWTH_LENS_LAYER = UILens.CreateLensLayerHash("Hex_Coloring_Appeal_Level")
-local ROUTES_LENS_LAYER = UILens.CreateLensLayerHash("Hex_Coloring_Appeal_Level")
-local SUBTYPE_LENS_LAYER = UILens.CreateLensLayerHash("Hex_Coloring_Appeal_Level")
-local AREA_LENS_LAYER = UILens.CreateLensLayerHash("Hex_Coloring_Appeal_Level")
-
-local i_AncientRoad = GameInfo.Routes["ROUTE_ANCIENT_ROAD"].Index;
-local i_MedievalRoad = GameInfo.Routes["ROUTE_MEDIEVAL_ROAD"].Index;
-local i_IndustrialRoad = GameInfo.Routes["ROUTE_INDUSTRIAL_ROAD"].Index;
-local i_ModernRoad = GameInfo.Routes["ROUTE_MODERN_ROAD"].Index;
-local i_Railroad = GameInfo.Routes["ROUTE_RAILROAD"].Index;
-
-local areaColorTable = {}
 
 -- ===========================================================================
 -- Exported functions
@@ -168,128 +148,6 @@ local function OnGetGrowthPlotTable()
     return colorPlot
 end
 
-local function OnGetRoutesPlotTable()
-	local localPlayer:number = Game.GetLocalPlayer()
-    local pPlayer:table = Players[localPlayer]
-	local cities = pPlayer:GetCities();
-
-    local localPlayerVis:table = PlayersVisibility[localPlayer]
-
-	local colorPlot:table = {}
-	colorPlot[PillagedRoadColor] = {}
-	colorPlot[AncientRoadColor] = {}
-	colorPlot[MedievalRoadColor] = {}
-	colorPlot[IndustrialRoadColor] = {}
-	colorPlot[ModernRoadColor] = {}
-	colorPlot[RailroadColor] = {}
-
-	local mapWidth, mapHeight = Map.GetGridSize()
-	for i = 0, (mapWidth * mapHeight) - 1, 1 do
-        local plot:table = Map.GetPlotByIndex(i)
-
-        if localPlayerVis:IsRevealed(plot:GetX(), plot:GetY()) and plot:IsRoute() then
-            if plot:IsRoutePillaged() then
-				table.insert(colorPlot[PillagedRoadColor], plot:GetIndex())
-			else
-				local type = plot:GetRouteType()
-
-				if type == i_AncientRoad then
-					table.insert(colorPlot[AncientRoadColor], plot:GetIndex())
-				elseif type == i_MedievalRoad then
-					table.insert(colorPlot[MedievalRoadColor], plot:GetIndex())
-				elseif type == i_IndustrialRoad then
-					table.insert(colorPlot[IndustrialRoadColor], plot:GetIndex())
-				elseif type == i_ModernRoad then
-					table.insert(colorPlot[ModernRoadColor], plot:GetIndex())
-				elseif type == i_Railroad then
-					table.insert(colorPlot[RailroadColor], plot:GetIndex())
-				else
-					print("Road type unknown")
-				end
-			end
-        end
-    end
-
-    return colorPlot
-end
-
-local function OnGetSubtypePlotTable()
-	local localPlayer:number = Game.GetLocalPlayer()
-    local pPlayer:table = Players[localPlayer]
-	local cities = pPlayer:GetCities();
-
-    local localPlayerVis:table = PlayersVisibility[localPlayer]
-
-	local colorPlot:table = {}
-	colorPlot[PillagedRoadColor] = {}
-	colorPlot[AncientRoadColor] = {}
-	colorPlot[MedievalRoadColor] = {}
-	colorPlot[IndustrialRoadColor] = {}
-	colorPlot[ModernRoadColor] = {}
-	colorPlot[RailroadColor] = {}
-
-	local mapWidth, mapHeight = Map.GetGridSize()
-	for i = 0, (mapWidth * mapHeight) - 1, 1 do
-        local plot:table = Map.GetPlotByIndex(i)
-
-        if localPlayerVis:IsRevealed(plot:GetX(), plot:GetY()) and plot:IsRoute() then
-			type = plot:GetProperty("RouteSubType")
-			if type == nil then type = 1; end
-			if type == 1 then
-				table.insert(colorPlot[AncientRoadColor], plot:GetIndex())
-			elseif type == 2 then
-				table.insert(colorPlot[MedievalRoadColor], plot:GetIndex())
-			elseif type == 3 then
-				table.insert(colorPlot[IndustrialRoadColor], plot:GetIndex())
-			elseif type == 4 then
-				table.insert(colorPlot[ModernRoadColor], plot:GetIndex())
-			elseif type == 5 then
-				table.insert(colorPlot[RailroadColor], plot:GetIndex())
-			else
-				print("Road type unknown")
-			end
-        end
-    end
-
-    return colorPlot
-end
-
-local function OnGetAreaPlotTable()
-	local colorPlot:table = {}
-
-	local mapWidth, mapHeight = Map.GetGridSize()
-
-	-- iterate over all hexes
-	for i = 0, (mapWidth * mapHeight) - 1, 1 do
-
-        local plot:table = Map.GetPlotByIndex(i)
-
-		-- get the area and check if there's an entry in the color table for it
-        local area = plot:GetAreaID()
-		local thisColor = areaColorTable[area]
-
-		-- if not, make one
-		if thisColor == nil then
-			local R = math.random(50,100)/100
-			local G = math.random(50,100)/100
-			local B = math.random(50,100)/100
-			thisColor = UI.GetColorValue(R, G, B,0.5)
-			print("New area is: "..area.."   applying color <"..R..","..G..","..B..">")
-			areaColorTable[area] = thisColor
-			colorPlot[thisColor] = {}
-		end
-
-		table.insert(colorPlot[thisColor], plot:GetIndex())
-    end
-
-	--print("There are "..#areaColorTable.." areas on the map")
-	for k,v in ipairs(areaColorTable) do
-		print("Area "..k.." has "..#v.." tiles in it")
-	end
-
-    return colorPlot
-end
-
 -- ===========================================================================
 --  Init
 -- ===========================================================================
@@ -306,27 +164,6 @@ local GrowthLensEntry = {
 	LensButtonTooltip = "LOC_HUD_GROWTH_LENS_TOOLTIP",
 	Initialize = nil,
 	GetColorPlotTable = OnGetGrowthPlotTable
-};
-
-local RoutesLensEntry = {
-	LensButtonText = "LOC_HUD_ROUTES_LENS",
-	LensButtonTooltip = "LOC_HUD_ROUTES_LENS_TOOLTIP",
-	Initialize = nil,
-	GetColorPlotTable = OnGetRoutesPlotTable
-};
-
-local SubtypeLensEntry = {
-	LensButtonText = "LOC_HUD_SUBTYPE_LENS",
-	LensButtonTooltip = "LOC_HUD_SUBTYPE_LENS_TOOLTIP",
-	Initialize = nil,
-	GetColorPlotTable = OnGetSubtypePlotTable
-};
-
-local AreaLensEntry = {
-	LensButtonText = "LOC_HUD_AREA_LENS",
-	LensButtonTooltip = "LOC_HUD_AREA_LENS_TOOLTIP",
-	Initialize = nil,
-	GetColorPlotTable = OnGetAreaPlotTable
 };
 
 UtilizationLensLegend = {
@@ -355,49 +192,14 @@ GrowthLensLegend = {
 	{"LOC_TOOLTIP_UTILIZATION_METRO",			MetroColor}
 }
 
-RoutesLensLegend = {
-	{"LOC_TOOLTIP_LENS_ROUTE_ANCIENT",			AncientRoadColor},
-    {"LOC_TOOLTIP_LENS_ROUTE_MEDIEVAL",			MedievalRoadColor},
-	{"LOC_TOOLTIP_LENS_ROUTE_INDUSTRIAL",		IndustrialRoadColor},
-	{"LOC_TOOLTIP_LENS_ROUTE_MODERN",			ModernRoadColor},
-	{"LOC_TOOLTIP_LENS_ROUTE_RAILROAD",			RailroadColor},
-	{"LOC_TOOLTIP_LENS_ROUTE_PILLAGED",			PillagedRoadColor}
-}
-
-SubtypeLensLegend = {
-	{"LOC_TOOLTIP_LENS_SUBTYPE_PRIMARY",		AncientRoadColor},
-    {"LOC_TOOLTIP_LENS_SUBTYPE_SECONDARY",		MedievalRoadColor},
-	{"LOC_TOOLTIP_LENS_SUBTYPE_TERTIARY",		IndustrialRoadColor},
-	{"LOC_TOOLTIP_LENS_SUBTYPE_OTHER",			ModernRoadColor}
-}
-
-AreaLensLegend = {
-	{"Nothing",		AncientRoadColor}
-}
-
 -- minimappanel.lua
 if g_ModLenses ~= nil then
-	g_ModLenses[ROUTES_LENS_NAME] = RoutesLensEntry
-	g_ModLenses[SUBTYPE_LENS_NAME] = SubtypeLensEntry
     g_ModLenses[UTIL_LENS_NAME] = UtilizationLensEntry
 	g_ModLenses[GROWTH_LENS_NAME] = GrowthLensEntry
-	g_ModLenses[AREA_LENS_NAME] = AreaLensEntry
 end
 
 -- modallenspanel.lua
 if g_ModLensModalPanel ~= nil then
-	g_ModLensModalPanel[ROUTES_LENS_NAME] = {}
-    g_ModLensModalPanel[ROUTES_LENS_NAME].LensTextKey = "LOC_HUD_ROUTES_LENS"
-    g_ModLensModalPanel[ROUTES_LENS_NAME].Legend = RoutesLensLegend
-
-	g_ModLensModalPanel[SUBTYPE_LENS_NAME] = {}
-    g_ModLensModalPanel[SUBTYPE_LENS_NAME].LensTextKey = "LOC_HUD_SUBTYPE_LENS"
-    g_ModLensModalPanel[SUBTYPE_LENS_NAME].Legend = SubtypeLensLegend
-	
-	g_ModLensModalPanel[AREA_LENS_NAME] = {}
-    g_ModLensModalPanel[AREA_LENS_NAME].LensTextKey = "LOC_HUD_AREA_LENS"
-    g_ModLensModalPanel[AREA_LENS_NAME].Legend = AreaLensLegend
-
     g_ModLensModalPanel[UTIL_LENS_NAME] = {}
     g_ModLensModalPanel[UTIL_LENS_NAME].LensTextKey = "LOC_HUD_UTILIZATION_LENS"
     g_ModLensModalPanel[UTIL_LENS_NAME].Legend = UtilizationLensLegend

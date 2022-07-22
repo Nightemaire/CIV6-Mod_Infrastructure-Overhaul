@@ -337,3 +337,4 @@ Events.PlayerEraChanged.Add(OnPlayerEraChange);
 --Events.Combat.Add(OnCombat);						--(combatResult)
 --
 --Events.WonderCompleted.Add(OnWonderComplete)	--(x,y,buildingID,playerID,cityID,%complete,unknown)
+
