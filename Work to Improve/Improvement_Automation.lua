@@ -108,7 +108,7 @@ local pillagedPlots = {};
 print("Improvement Threshold = "..AutoImproveThreshold);
 
 -- ===========================================================================
--- PRIMARY EVENT HANDLERS
+-- PRIMARY EVENT HANDLER
 -- ===========================================================================
 
 function OnPlayerTurnStarted(playerID:number, isFirstTime)
@@ -131,15 +131,20 @@ GameEvents.PlayerTurnStarted.Add(OnPlayerTurnStarted);
 -- STATE TABLE MANAGEMENT
 -- ===========================================================================
 
-function GetTables(player)
-	return player:GetProperty("AUTO_IMPROVE_TURN_TABLE"), player:GetProperty("AUTO_IMPROVE_PLOT_TABLE")
+function GetTables(player : object)
+	if player ~= nil then
+		return player:GetProperty("AUTO_IMPROVE_TURN_TABLE"), player:GetProperty("AUTO_IMPROVE_PLOT_TABLE")
+	end
+	return nil, nil
 end
+
 function SetTables(player, TurnTable, PlotTable)
 	if player ~= nil then
 		player:SetProperty("AUTO_IMPROVE_TURN_TABLE", TurnTable)
 		player:SetProperty("AUTO_IMROVE_PLOT_TABLE", PlotTable)
 	end
 end
+
 function RemovePlotFromTables(playerID : number, plotID : number)
 	if notNilOrNegative(plotID) then
 		local player = Players[playerID]
@@ -151,6 +156,7 @@ function RemovePlotFromTables(playerID : number, plotID : number)
 		SetTables(player, TurnTable, PlotTable)
 	end
 end
+
 function UpdateImprovementTables(playerID:number, plotID:number, turn:number)
 	if not(playerID == nil or plotID == nil or turn == nil) then
 		local player = Players[playerID]
@@ -175,35 +181,56 @@ function UpdateImprovementTables(playerID:number, plotID:number, turn:number)
 		print("Bad args to function: <UpdateImprovementTables>")
 	end
 end
+
 function ChangePlotOwner(plotID : number, newOwnerID : number, oldOwnerID : number)
 	if not(plotID == nil or newOwnerID == nil or oldOwnerID == nil) then
 		local newOwner = Players[newOwnerID]
 		local oldOwner = Players[oldOwnerID]
 
-		local newTurnTable, newPlotTable = GetTables(newOwner)
+		--local newTurnTable, newPlotTable = GetTables(newOwner)
 		local oldTurnTable, oldPlotTable = GetTables(oldOwner)
 
-		-- Transfer the plot table entry
-		local turn = oldPlotTable[plotID]
-		newPlotTable[plotID] = turn
-		oldPlotTable[plotID] = nil
+		if oldPlotTable ~= nil then
+			if oldPlotTable[plotID] ~= nil then
+				-- Get the turn
+				local turn = oldPlotTable[plotID]
+				UpdateImprovementTables(newOwnerID, plotID, turn)
+				RemovePlotFromTables(oldOwnerID, plotID)
+			else
+				-- Initialize the plot
+				InitializePlot(Map.GetPlotByIndex(plotID))
+			end
+		end
 
-		-- Remove the old turn table entry and add the new
-		oldTurnTable[turn][plotID] = nil
-		newTurnTable[turn][plotID] = true
-
-		SetTables(newOwner, newTurnTable, newPlotTable)
-		SetTables(oldOwner, oldTurnTable, oldPlotTable)
+		-- Update the current owner
+		local plot = Map.GetPlotByIndex(plotID)
+		local UtilData = GetPlotUtilData(plot)
+		UtilData.Owner = newOwner
+		SetPlotUtilData(plot, UtilData)
 	end
 end
+
 function RemoveCityFromPlayer(playerID : number, city : object)
 	for k,plot in orderedPairs(city:GetOwnedPlots()) do
 		RemovePlotFromTables(playerID, plot:GetIndex())
 	end
 end
 
+function SetPlotUtilData(pPlot:object, newData:table)
+	if pPlot ~= nil then
+		pPlot:SetProperty("UTILIZATION_DATA", newData)
+	end
+end
+
+function GetPlotUtilData(pPlot:object)
+	if pPlot ~= nil then
+		return pPlot:GetProperty("UTILIZATION_DATA")
+	end
+	return nil
+end
+
 -- ===========================================================================
--- UTILIZATION UPDATES
+-- UTILIZATION MANIPULATION
 -- ===========================================================================
 
 function InitializePlot(pPlot : object)
@@ -214,10 +241,11 @@ function InitializePlot(pPlot : object)
 			Utilization = 0,
 			Growth 		= 0,
 			LastUpdate 	= 0,
-			ImprovesOn 	= 0
+			ImprovesOn 	= 0,
+			Owner		= pPlot:GetOwner()
 		};
 		
-		pPlot:SetProperty("UTILIZATION_DATA", newUtilData)
+		SetPlotUtilData(pPlot, newUtilData)
 		plotID = pPlot:GetIndex()
 
 		-- Calculate the growth and update the utilization
@@ -226,42 +254,47 @@ function InitializePlot(pPlot : object)
 	end
 end
 
-function UpdatePlotUtilData(plotID : number, newGrowth : number)
-	local pPlot = Map.GetPlotByIndex(plotID)
-	local UtilData = pPlot:GetProperty("UTILIZATION_DATA")
-	local currentTurn = Game.GetCurrentGameTurn()
+function UpdatePlotUtilData(pPlot : object, newGrowth : number)
+	if pPlot ~= nil then
+		local UtilData = GetPlotUtilData(pPlot)
+		local currentTurn = Game.GetCurrentGameTurn()
+		
+		local growth = UtilData.Growth
 
-	-- Check to see if the Utilization value needs an update
-	if not(currentTurn == UtilData.LastUpdate) then
-		local currentUtil = UtilData.Utilization;
-		local timeSinceLastUpdate = currentTurn - UtilData.LastUpdate;
-		UtilData.Utilization = currentUtil + (timeSinceLastUpdate * UtilData.Growth);
-		UtilData.LastUpdate = currentTurn;
+		-- Check to see if the Utilization value needs an update with the old growth value
+		-- before checking to see if theres a change in growth
+		if not(currentTurn == UtilData.LastUpdate) then
+			local currentUtil = UtilData.Utilization;
+			local timeSinceLastUpdate = currentTurn - UtilData.LastUpdate;
+			UtilData.Utilization = currentUtil + (timeSinceLastUpdate * growth);
+			UtilData.LastUpdate = currentTurn;
+		end
+
+		-- if the arg newGrowth is nil we just use the current growth
+		if newGrowth ~= nil then growth = newGrowth; end
+
+		-- Get the difference between the improvement threshold and the current utilization
+		local diff = Threshold - UtilData.Utilization
+		-- Number of turns is the diff divided by the growth rounded up
+		local turns = math.ceil(diff / growth)
+		-- And so the expected improvement turn is the number of turns plus the current turn
+		local ImprovementTurn = currentTurn + turns
+
+		UtilData.ImprovesOn = ImprovementTurn
+		UtilData.Growth = growth
+
+		SetPlotUtilData(pPlot, UtilData)
+
+		-- We can update the tables for the owning player as well
+		local owner = pPlot:GetOwner()
+		if notNilOrNegative(owner) then
+			UpdateImprovementTables(pPlot:GetOwner(), plotID, ImprovementTurn)
+		end
+
+		return UtilData
 	end
 
-	-- Get the growth, if the arg newGrowth is nil we just use the current growth
-	local growth = UtilData.Growth
-	if newGrowth ~= nil then growth = newGrowth; end
-
-	-- Get the difference between the improvement threshold and the current utilization
-	local diff = Threshold - UtilData.Utilization
-	-- Number of turns is the diff divided by the growth rounded up
-	local turns = math.ceil(diff / growth)
-	-- And so the expected improvement turn is the number of turns plus the current turn
-	local ImprovementTurn = currentTurn + turns
-
-	UtilData.ImprovesOn = ImprovementTurn
-	UtilData.Growth = growth
-
-	pPlot:SetProperty("UTILIZATION_DATA", UtilData)
-
-	-- We can update the tables for the owning player as well
-	local owner = pPlot:GetOwner()
-	if notNilOrNegative(owner) then
-		UpdateImprovementTables(pPlot:GetOwner(), plotID, ImprovementTurn)
-	end
-
-	return UtilData
+	return nil
 end
 
 function GetTilesToImprove(playerID:number, turn:number)
@@ -303,9 +336,7 @@ function TryPlayerImprovements(playerID:number, turn:number)
 	end
 end
 
-function CalculatePlotGrowth(plotID: number)
-	local plot = Map.GetPlotByIndex(plotID)
-
+function CalculatePlotGrowth(plot : object)
 	if plot ~= nil then
 		-- Get plot details
 		local owner			= plot:GetOwner()
@@ -346,52 +377,18 @@ function CalculatePlotGrowth(plotID: number)
 	return nil
 end
 
--- ===========================================================================
--- AUTO IMPROVEMENTS AND MAINTENANCE
--- ===========================================================================
-
-function UpdatePlayerCities(playerID)
-	local cities = getAllCities(playerID)
-
-	if cities ~= nil then
-		-- Iterate over all cities
-		for iCityIndex, city in cities:Members() do
-			local data = GetCityData(city)
-			for k,plot in orderedPairs(city:GetOwnedPlots()) do
-				--CalculateUtilGrowth(plot:GetX(), plot:GetY())
-				--UpdatePlotUtilization(plot, data)
-			end
+function UpdatePlotGrowth(plot : object)
+	if plot ~= nil then
+		local newGrowth = CalculatePlotGrowth(plot)
+		if newGrowth ~= nil then
+			UpdatePlotUtilData(plot, newGrowth)
 		end
 	end
 end
 
-function RecacheImprovableTiles(playerID, cityID)
-	local PlotCache = {}
-	local city = CityManager.GetCity(playerID, cityID)
-
-	for k,plot in orderedPairs(city:GetOwnedPlots()) do
-		repeat
-			if plot:IsCity() then break; end
-			if plot:GetDistrictType() >= 0 then break; end
-			if plot:GetWonderType() >= 0 then break; end
-			if plot:IsNationalPark() then break; end
-			if plot:IsWater() and not(plot:IsShallowWater()) then break; end
-
-			PlotCache.Add(plot)
-		until true
-	end
-	city.SetProperty("CACHED_PLOTS", PlotCache)
-end
-
-function RecalcUtilizationInCity(playerID, cityID)
-	local city = CityManager.GetCity(playerID, cityID)
-	local plots = city.GetProperty("CACHED_PLOTS")
-	local data = GetCityData(city)
-
-	for k,plot in orderedPairs(plots) do
-		UpdatePlotUtilization(plot, data)
-	end
-end
+-- ===========================================================================
+-- AUTO IMPROVEMENTS AND MAINTENANCE
+-- ===========================================================================
 
 function GetAutoImprovementType(pPlot)
 	local ePlotResource = pPlot:GetResourceType();
@@ -445,7 +442,6 @@ function GetAutoImprovementType(pPlot)
 
 	return -1;
 end
-
 function PlayerKnowsImprovement(iPlayer, eImprovementType)
 	local player = Players[iPlayer]
 	if player ~= nil and notNilOrNegative(eImprovementType) then
@@ -484,32 +480,10 @@ function PlayerKnowsImprovement(iPlayer, eImprovementType)
 
 	return false;
 end
-
 function IsAquacultureAvailable(City)
 	local gov = City:GetAssignedGovernor()
 	return (gov:IsEstablished() and gov:HasPromotion(m_eAquaculturePromotion))
 end
-
-function GetCityData(city : object)
-	
-	local data = {}
-
-	if city ~= nil then
-		-- get the actual details
-		data.plotX = city:GetX()
-		data.plotY = city:GetY()
-		data.cityID = city:GetID()
-		data.HasAquaculture = IsAquacultureAvailable(city)
-	else
-		data.cityID = -1
-		data.plotX = -1
-		data.plotY = -1
-		data.HasAquaculture = false
-	end
-
-	return data
-end
-
 function TryMakeImprovement(pPlot, eImprovementType, cityHasAquaculture)
 	if notNilOrNegative(eImprovementType) and pPlot ~= nil then
 		local plotX = pPlot:GetX()
@@ -560,81 +534,77 @@ function TryMakeImprovement(pPlot, eImprovementType, cityHasAquaculture)
 	
 	return false;
 end
-
 function TryRepairPlot(plot : object)
 	printIfPlayer(playerID, "Repaired pillaged tile");
 	ImprovementBuilder.SetImprovementPillaged(pPlot, false)
 end
-
 
 -- ===========================================================================
 -- EVENT HANDLERS
 -- ===========================================================================
 
 -- City Events
-function OnCityInitialized(cityOwner, cityID, iX, iY)
-	for k,plot in orderedPairs(Cities.GetCityInPlot(iX, iY):GetOwnedPlots()) do
-		InitializePlot(plot)
-	end
-end
-Events.CityInitialized.Add(OnCityInitialized);					-- (playerID, cityID, iX, iY)
+Events.CityInitialized.Add( function (cityOwner, cityID, iX, iY)
+		for k,plot in orderedPairs(Cities.GetCityInPlot(iX, iY):GetOwnedPlots()) do
+			InitializePlot(plot)
+		end
+end );
 
+Events.CityTileOwnershipChanged.Add( function (ownerID, cityID, iX, iY)
+		print("City Tile Ownership Changed")
+		local player = Players[ownerID]
+		local city = CityManager.GetCity(ownerID, cityID)
+		local plot = Map.GetPlot(iX, iY)
 
-function OnCityTileOwnershipChanged(...)
-	print("City Tile Ownership Changed")
-	
-	--tprint(arg)
-end
-Events.CityTileOwnershipChanged.Add(OnCityTileOwnershipChanged)
+		local UtilData = GetPlotUtilData(plot)
+		local prevOwner = UtilData.Owner
+		local currOwner = plot:GetOwner()
 
-function OnCityTransferred(...)
-	-- Need to sync args
-	local args = {}
-	if arg[5] ~= nil then
-		-- City was conquered
-		print("City Conquered")
-		args.newOwner = arg[1]
-		args.oldOwner = arg[2]
-		args.newCityID = arg[3]
-	else
-		-- City was transferred
-		print("City Transferred")
-		args.newOwner = arg[1]
-		args.oldOwner = arg[3]
-		args.newCityID = arg[2]
-	end
+		if prevOwner ~= newOwner then
+			ChangePlotOwner(plot:GetIndex(), newOwner, prevOwner)
+		end
 
-	local city = CityManager.GetCity(args.newOwner, args.newCityID)
-	RemoveCityFromPlayer(args.oldOwner, city)
-	--tprint(arg)
-end
-Events.CityTransfered.Add(OnCityTransferred)
-GameEvents.CityConquered.Add(OnCityTransferred)
+		if PlotTable[plot:GetIndex()] == nil then
+			
+		end
+		--tprint(arg)
+end );
 
+Events.CityTransfered.Add( function (newOwner, newCityID, oldOwner)
+		RemoveCityFromPlayer(oldOwner, CityManager.GetCity(newOwner, newCityID))
+end );
 
+GameEvents.CityConquered.Add( function (newOwner, oldOwner, newCityID)
+		RemoveCityFromPlayer(oldOwner, CityManager.GetCity(newOwner, newCityID))
+end );
+
+Events.CityWorkerChanged.Add( function(ownerID, cityID, iX, iY)
+		local plot = Map.GetPlot(iX, iY)
+		UpdatePlotGrowth(plot)
+end );
 
 
 function OnPlotChangeEvent(iX:number, iY:number)
-	local plotID = Map.GetPlot(iX, iY):GetIndex()
-	CalculatePlotGrowth(plotID)
+	local plot = Map.GetPlot(iX, iY)
+	UpdatePlotGrowth(plot)
 end
-
-
---[[
-local InitGrowthEvents = {
-	-- Events.CityAddedToMap,		-- playerID, cityID, x, y
-}
 
 -- Single plot recalc events
 local PlotRecalcGrowthEvents = {
 	Events.PlotAppealChanged,
 	Events.PlotPropertyChanged,
 	Events.PlotYieldChanged,
-	--GameEvents.PlotOwnershipChanged,		-- Need to find args
 	Events.FeatureRemovedFromMap,
 	Events.FeatureAddedToMap
 }
 
+if #PlotRecalcGrowthEvents > 0 then
+	for i,event in orderedPairs(PlotRecalcGrowthEvents) do
+		event.Add(OnPlotChangeEvent)
+	end
+end
+
+--[[
 local CityRecalcGrowthEvents = {
 	Events.CityWorkerChanged,			-- playerID, cityID, x, y
 	Events.CityTileOwnershipChanged,	-- ownerID, cityID
@@ -648,12 +618,6 @@ local RecalcUtilEvents = {
 if #InitGrowthEvents > 0 then
 	for i,event in orderedPairs(InitGrowthEvents) do
 		--event.Add(InitializePlotUtilization)
-	end
-end
-
-if #PlotRecalcGrowthEvents > 0 then
-	for i,event in orderedPairs(PlotRecalcGrowthEvents) do
-		--event.Add(OnPlotChangeEvent)
 	end
 end
 
