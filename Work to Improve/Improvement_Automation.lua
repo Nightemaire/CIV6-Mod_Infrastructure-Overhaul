@@ -128,18 +128,9 @@ end
 GameEvents.PlayerTurnStarted.Add(OnPlayerTurnStarted);
 
 -- ===========================================================================
--- OPTIMIZATION
+-- STATE TABLE MANAGEMENT
 -- ===========================================================================
 
--- Store the utilization data as a struct for efficiency
-hstructure UtilizationData
-	Utilization		:number;
-	Growth			:number;
-	LastUpdate		:number;
-	ImprovesOn		:number;
-end
-
--- Table Management
 function GetTables(player)
 	return player:GetProperty("AUTO_IMPROVE_TURN_TABLE"), player:GetProperty("AUTO_IMPROVE_PLOT_TABLE")
 end
@@ -176,6 +167,7 @@ function UpdateImprovementTables(playerID:number, plotID:number, turn:number)
 		end
 
 		PlotTable[plotID] = turn
+		if TurnTable[turn] == nil then TurnTable[turn] = {}; end
 		TurnTable[turn][plotID] = true
 
 		SetTables(player, TurnTable, PlotTable)
@@ -204,27 +196,34 @@ function ChangePlotOwner(plotID : number, newOwnerID : number, oldOwnerID : numb
 		SetTables(oldOwner, oldTurnTable, oldPlotTable)
 	end
 end
+function RemoveCityFromPlayer(playerID : number, city : object)
+	for k,plot in orderedPairs(city:GetOwnedPlots()) do
+		RemovePlotFromTables(playerID, plot:GetIndex())
+	end
+end
 
 -- ===========================================================================
--- UTILIZATION UPDATES AND INITIALIZATION
+-- UTILIZATION UPDATES
 -- ===========================================================================
 
-function InitializePlot(plotID)	
-	local pPlot = Map.GetPlotByIndex(plotID);
+function InitializePlot(pPlot : object)
+	if pPlot ~= nil then
+		--print("Initializing plot: "..pPlot:GetIndex())
+		-- Initialize the table
+		local newUtilData = {
+			Utilization = 0,
+			Growth 		= 0,
+			LastUpdate 	= 0,
+			ImprovesOn 	= 0
+		};
+		
+		pPlot:SetProperty("UTILIZATION_DATA", newUtilData)
+		plotID = pPlot:GetIndex()
 
-	-- Initialize the struct
-	local newUtilData = hmake UtilizationData {
-		Utilization = 0,
-		Growth = 0,
-		LastUpdate = 0,
-		ImprovesOn = 0,
-	};
-
-	pPlot:SetProperty("UTILIZATION_DATA", newUtilData)
-
-	-- Calculate the growth and update the utilization
-	local growth = CalculatePlotGrowth(plotID)
-	UpdatePlotUtilData(plotID, growth)
+		-- Calculate the growth and update the utilization
+		local growth = CalculatePlotGrowth(plotID)
+		UpdatePlotUtilData(plotID, growth)
+	end
 end
 
 function UpdatePlotUtilData(plotID : number, newGrowth : number)
@@ -270,17 +269,18 @@ function GetTilesToImprove(playerID:number, turn:number)
 	local TurnTable, PlotTable = GetTables(player)
 
 	local plots = {}
-
-	if TurnTable[turn] ~= nil then
-		-- Remove the entry for this turn
-		local TurnEntry = table.remove(TurnTable, turn)
-		for k,v in orderedPairs(TurnEntry) do
-			table.insert(plots, Map.GetPlotByIndex(k))
-			-- Remove the plot from the map
-			table.remove(PlotTable, k)
+	if TurnTable ~= nil then
+		if TurnTable[turn] ~= nil then
+			-- Remove the entry for this turn
+			local TurnEntry = table.remove(TurnTable, turn)
+			for k,v in orderedPairs(TurnEntry) do
+				table.insert(plots, Map.GetPlotByIndex(k))
+				-- Remove the plot from the map
+				table.remove(PlotTable, k)
+			end
+			-- Update the tables
+			SetTables(player, TurnTable, PlotTable)
 		end
-		-- Update the tables
-		SetTables(player, TurnTable, PlotTable)
 	end
 
 	return plots
@@ -314,7 +314,7 @@ function CalculatePlotGrowth(plotID: number)
 		local isFreshWater	= plot:IsFreshWater()
 		local hasRoute		= plot:IsRoute()
 		local yield			= plot:GetYield()	-- This sums all yields on the plot
-		local distToCity	= FindClosestCity(iX, iY, 10)
+		--local distToCity	= FindClosestCity(iX, iY, 10)
 
 		-- Set the base growth to the tile's appeal (can be negative)
 		-- If negative appeal, and unworked, utilization will drop back to zero
@@ -358,13 +358,11 @@ function UpdatePlayerCities(playerID)
 		for iCityIndex, city in cities:Members() do
 			local data = GetCityData(city)
 			for k,plot in orderedPairs(city:GetOwnedPlots()) do
-				CalculateUtilGrowth(plot:GetX(), plot:GetY())
-				UpdatePlotUtilization(plot, data)
+				--CalculateUtilGrowth(plot:GetX(), plot:GetY())
+				--UpdatePlotUtilization(plot, data)
 			end
 		end
 	end
-
-	PerformAllActions()
 end
 
 function RecacheImprovableTiles(playerID, cityID)
@@ -449,7 +447,8 @@ function GetAutoImprovementType(pPlot)
 end
 
 function PlayerKnowsImprovement(iPlayer, eImprovementType)
-	if notNilOrNegative(eImprovementType) then
+	local player = Players[iPlayer]
+	if player ~= nil and notNilOrNegative(eImprovementType) then
 		local PrereqTech = GameInfo.Improvements[eImprovementType].PrereqTech;
 		local PrereqCivic = GameInfo.Improvements[eImprovementType].PrereqCivic;
 		
@@ -457,7 +456,7 @@ function PlayerKnowsImprovement(iPlayer, eImprovementType)
 		local HasCivic = true;
 
 		if (PrereqTech ~= nil) then
-			if getPlayer(iPlayer):GetTechs():HasTech(GameInfo.Technologies[PrereqTech].Index) then
+			if player:GetTechs():HasTech(GameInfo.Technologies[PrereqTech].Index) then
 				--print("     "..PrereqTech.." is completed.");
 			else
 				--print("     "..PrereqTech.." is missing.");
@@ -468,7 +467,7 @@ function PlayerKnowsImprovement(iPlayer, eImprovementType)
 		end
 
 		if (PrereqCivic ~= nil) then
-			if getPlayer(iPlayer):GetCulture():HasCivic(GameInfo.Civics[PrereqCivic].Index) then
+			if player:GetCulture():HasCivic(GameInfo.Civics[PrereqCivic].Index) then
 				--print("     "..PrereqCivic.." is completed.");
 			else
 				--print("     "..PrereqCivic.." is missing.");
@@ -569,9 +568,59 @@ end
 
 
 -- ===========================================================================
--- OTHER EVENT HANDLERS
+-- EVENT HANDLERS
 -- ===========================================================================
 
+-- City Events
+function OnCityInitialized(cityOwner, cityID, iX, iY)
+	for k,plot in orderedPairs(Cities.GetCityInPlot(iX, iY):GetOwnedPlots()) do
+		InitializePlot(plot)
+	end
+end
+Events.CityInitialized.Add(OnCityInitialized);					-- (playerID, cityID, iX, iY)
+
+
+function OnCityTileOwnershipChanged(...)
+	print("City Tile Ownership Changed")
+	
+	--tprint(arg)
+end
+Events.CityTileOwnershipChanged.Add(OnCityTileOwnershipChanged)
+
+function OnCityTransferred(...)
+	-- Need to sync args
+	local args = {}
+	if arg[5] ~= nil then
+		-- City was conquered
+		print("City Conquered")
+		args.newOwner = arg[1]
+		args.oldOwner = arg[2]
+		args.newCityID = arg[3]
+	else
+		-- City was transferred
+		print("City Transferred")
+		args.newOwner = arg[1]
+		args.oldOwner = arg[3]
+		args.newCityID = arg[2]
+	end
+
+	local city = CityManager.GetCity(args.newOwner, args.newCityID)
+	RemoveCityFromPlayer(args.oldOwner, city)
+	--tprint(arg)
+end
+Events.CityTransfered.Add(OnCityTransferred)
+GameEvents.CityConquered.Add(OnCityTransferred)
+
+
+
+
+function OnPlotChangeEvent(iX:number, iY:number)
+	local plotID = Map.GetPlot(iX, iY):GetIndex()
+	CalculatePlotGrowth(plotID)
+end
+
+
+--[[
 local InitGrowthEvents = {
 	-- Events.CityAddedToMap,		-- playerID, cityID, x, y
 }
@@ -598,19 +647,19 @@ local RecalcUtilEvents = {
 
 if #InitGrowthEvents > 0 then
 	for i,event in orderedPairs(InitGrowthEvents) do
-		event.Add(InitializePlotUtilization)
+		--event.Add(InitializePlotUtilization)
 	end
 end
 
 if #PlotRecalcGrowthEvents > 0 then
 	for i,event in orderedPairs(PlotRecalcGrowthEvents) do
-		event.Add(CalculateUtilGrowth)
+		--event.Add(OnPlotChangeEvent)
 	end
 end
 
 if #RecalcUtilEvents > 0 then
 	for i,event in orderedPairs(RecalcUtilEvents) do
-		event.Add(UpdatePlotUtilization)
+		--event.Add(UpdatePlotUtilization)
 	end
 end
 
@@ -619,27 +668,20 @@ end
 --Events.ImprovementChanged.Add(OnImprovementChanged);
 function OnImprovementAdded(iX, iY, eImprovement, playerID)
 	local plot = Map.GetPlot(iX, iY)
-	local util = getUtilization(plot)
+	--local util = getUtilization(plot)
 
 	-- the utilization should be at least the threshold with an improvement
-	setUtilization(plot, math.max(util, Threshold))
+	--setUtilization(plot, math.max(util, Threshold))
 end
 Events.ImprovementAddedToMap.Add(OnImprovementAdded);
 
 -- Improvement Removed
 function OnImprovementRemoved(iX, iY, eImprovement, playerID)
 	-- halve the utilization so it doesn't re-improve immediately
-	setUtilization(Map.GetPlot(iX, iY), Threshold/2)
+	--setUtilization(Map.GetPlot(iX, iY), Threshold/2)
 end
 Events.ImprovementRemovedFromMap.Add(OnImprovementRemoved);
 
-
-
--- City Initialized
-function OnCityInitialized(cityOwner, cityID, iX, iY)
-
-end
-Events.CityInitialized.Add(OnCityInitialized);					-- (playerID, cityID, iX, iY)
 
 -- City Focus Changed
 function OnCityFocusChanged(cityOwner, cityID)
@@ -669,7 +711,7 @@ function OnCityPopChanged(cityOwner, cityID, ChangeAmount)
 	local city = CityManager.GetCity(cityOwner, getCity)
 	local data = GetCityData(city)
 	for k,plot in orderedPairs(city:GetOwnedPlots()) do
-		UpdatePlotUtilization(plot, data)
+		--UpdatePlotUtilization(plot, data)
 	end
 end
 GameEvents.OnCityPopulationChanged.Add(OnCityPopChanged);		-- (cityOwner, cityID, ChangeAmount)
@@ -681,7 +723,7 @@ function OnWorkerChanged(cityOwner, cityID, iX, iY)
 
 	--for k,plot in orderedPairs(city:GetOwnedPlots()) do
 	local plot = Map.GetPlot(iX, iY)
-	CalculateUtilGrowth(plot:GetX(), plot:GetY())
+	CalculatePlotGrowth(plot:GetIndex())
 		--UpdatePlotUtilization(plot, CityData)
 	--end
 end
@@ -689,7 +731,7 @@ Events.CityWorkerChanged.Add(OnWorkerChanged);					-- (owner, cityID, iX, iY)
 
 -- Tile Ownership Changed
 function OnTileOwnershipChanged(cityOwner, cityID)
-	--CalculateUtilGrowth(plot:GetX(), plot:GetY())
+	--CalculatePlotGrowth(plot:GetX(), plot:GetY())
 end
 Events.CityTileOwnershipChanged.Add(OnTileOwnershipChanged);	-- (owner, cityID)
 
@@ -705,7 +747,7 @@ function OnCityConquered(newOwner, oldOwner, newCityID, iX, iY)
 	local city = pPlayer:GetCities():FindID(newCityID)
 
 	for k,plot in orderedPairs(city:GetOwnedPlots()) do
-		CalculateUtilGrowth(plot:GetX(), plot:GetY())
+		CalculatePlotGrowth(plot:GetIndex())
 		--UpdatePlotUtilization(plot, CityData)
 	end
 end
@@ -719,7 +761,7 @@ function OnPlayerEraChange(playerID:number, eraID)
 end
 Events.PlayerEraChanged.Add(OnPlayerEraChange);
 
-
+--]]
 
 -- ===========================================================================
 -- UTILITY FUNCTIONS
@@ -749,32 +791,6 @@ function FindClosestCity(iStartX, iStartY, range)
     end
 
     return iShortestDistance, pCity;
-end
-
--- Get all cities belonging to a player
-function getAllCities(playerID)
-	local cities = getPlayer(playerID):GetCities();
-	local cityCount = cities:GetCount();
-
-	if cityCount > 0 then
-		--print("Player has "..cityCount.." cities");
-		return cities;
-	else
-		--print("Player has no cities")
-	end
-
-	return nil;
-end
-
--- Get a single city from the playerID and city ID
-function getCity(playerID, cityID)
-	return getPlayer(playerID):GetCities():FindID(cityID);
-end
-
-
--- PLAYER MANAGEMENT
-function getPlayer(playerID)
-	return PlayerManager.GetPlayer(playerID)
 end
 
 -- MISCELLANEOUS

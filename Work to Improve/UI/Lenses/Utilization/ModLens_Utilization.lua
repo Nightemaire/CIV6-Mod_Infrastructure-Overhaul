@@ -61,7 +61,7 @@ local function OnGetUtilPlotTable()
 				elseif plot:GetImprovementType() >= 0 then
 					table.insert(colorPlot[ImprovementColor], plot:GetIndex())
 				else
-					local util = plot:GetProperty("PLOT_UTILIZATION")
+					local util = plot:GetProperty("UTILIZATION_DATA").Utilization
 					if util == nil then util = 0; end
 					
 					thold = 100;
@@ -108,7 +108,7 @@ local function OnGetGrowthPlotTable()
 				else
 					local index = 1
 					
-					local growth = plot:GetProperty("PLOT_UTIL_GROWTH")
+					local growth = plot:GetProperty("UTILIZATION_DATA").Growth
 					if growth == nil then 
 						growth = 0
 					else
