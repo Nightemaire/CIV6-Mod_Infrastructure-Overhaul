@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# ModBuddy Solution File, Format Version 12.00
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{5DAE07AF-E217-45C1-8DE7-FF99D6011E8A}") = "Enhanced Routes", "..\Enhanced Routes\Enhanced Routes.civ6proj", "{398A3794-47DA-48B7-B16A-F8D9F29491B6}"
+EndProject
+Project("{5DAE07AF-E217-45C1-8DE7-FF99D6011E8A}") = "Railway Engineering", "..\Railway Engineering\Railway Engineering.civ6proj", "{3A660792-140C-430E-9B4B-01447C725F0A}"
+EndProject
+Project("{5DAE07AF-E217-45C1-8DE7-FF99D6011E8A}") = "Work to Improve", "..\Work to Improve\Work to Improve.civ6proj", "{3795B02A-7E06-4BC1-A330-083B19760E63}"
+EndProject
+Project("{5DAE07AF-E217-45C1-8DE7-FF99D6011E8A}") = "Organic Expansion", "..\Organic Expansion\Organic Expansion.civ6proj", "{4F89A8B8-E557-4654-8C24-B0955283E7D1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Default|Civ6 = Default|Civ6
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{398A3794-47DA-48B7-B16A-F8D9F29491B6}.Default|Civ6.ActiveCfg = Default|Civ6
+		{398A3794-47DA-48B7-B16A-F8D9F29491B6}.Default|Civ6.Build.0 = Default|Civ6
+		{3A660792-140C-430E-9B4B-01447C725F0A}.Default|Civ6.ActiveCfg = Default|Civ6
+		{3A660792-140C-430E-9B4B-01447C725F0A}.Default|Civ6.Build.0 = Default|Civ6
+		{3795B02A-7E06-4BC1-A330-083B19760E63}.Default|Civ6.ActiveCfg = Default|Civ6
+		{3795B02A-7E06-4BC1-A330-083B19760E63}.Default|Civ6.Build.0 = Default|Civ6
+		{4F89A8B8-E557-4654-8C24-B0955283E7D1}.Default|Civ6.ActiveCfg = Default|Civ6
+		{4F89A8B8-E557-4654-8C24-B0955283E7D1}.Default|Civ6.Build.0 = Default|Civ6
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RailwayText -->
+<!-- Author: Nightemaire -->
+<!-- DateCreated: 6/18/2022 6:14:30 PM -->
+<GameData>
+	<LocalizedText>
+		<!-- UNITS -->
+		<Row Tag="LOC_UNIT_RAILWAY_ENGINEER_NAME" Language="en_US">
+			<Text>Railway Engineer</Text>
+		</Row>
+
+		<Row Tag="LOC_UNIT_RAILWAY_ENGINEER_DESCRIPTION" Language="en_US">
+			<Text>The Railway Engineer costs iron to produce, coal to maintain, and is capable of building 10 tiles worth of railroad. Railroads are created as the engineer moves. Requires a Railyard in the city. Railroads will not be constructed if you have 0 Coal in your stockpile, or if the Engineer does not move adjacent to an existing railroad.</Text>
+		</Row>
+
+		<!-- BUILDINGS -->
+		<Row Tag="LOC_BUILDING_RAILYARD_NAME" Language="en_US">
+			<Text>Railyard</Text>
+		</Row>
+
+		<Row Tag="LOC_BUILDING_RAILYARD_DESCRIPTION" Language="en_US">
+			<Text>The Railyard enables construction of Railway Engineers in the city. +1 [ICON_TradeRoute] Trade Route capacity if this city does not yet have a Market or Lighthouse building.</Text>
+		</Row>
+
+		<Row Tag="LOC_BUILDING_TCRR_STATION_NAME" Language="en_US">
+			<Text>Transcontinental Railstation</Text>
+		</Row>
+
+		<Row Tag="LOC_BUILDING_TCRR_STATION_DESCRIPTION" Language="en_US">
+			<Text>This passenger rail station is the endpoint for a continent spanning engineering marvel. It provides a boost to Tourism [ICON_Tourism] in each city where it's built.</Text>
+		</Row>
+
+	</LocalizedText>
+</GameData>

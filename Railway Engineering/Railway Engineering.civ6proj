@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Default" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Default</Configuration>
+    <Name>Railway Engineering</Name>
+    <Guid>43e965ba-4455-4425-b84f-052abfe25cee</Guid>
+    <ProjectGuid>{3a660792-140c-430e-9b4b-01447c725f0a}</ProjectGuid>
+    <ModVersion>1</ModVersion>
+    <Teaser>Painless railroad construction</Teaser>
+    <Description>Adds a new building, unit, and a great person to make building railroads a little less painful, and maybe a little more fun.</Description>
+    <AffectsSavedGames>false</AffectsSavedGames>
+    <SupportsSinglePlayer>true</SupportsSinglePlayer>
+    <SupportsMultiplayer>true</SupportsMultiplayer>
+    <SupportsHotSeat>true</SupportsHotSeat>
+    <CompatibleVersions>2.0</CompatibleVersions>
+    <InGameActionData><![CDATA[<InGameActions><UpdateArt id="Art"><File>Railway_Engineering.Art.xml</File></UpdateArt><UpdateDatabase id="Database"><Properties><LoadOrder>2</LoadOrder></Properties><File>RE_AdjustTunnels.sql</File><File>RE_Great_Engineer.sql</File></UpdateDatabase><UpdateIcons id="Icons"><File>RE_Icons.xml</File></UpdateIcons><UpdateText id="Text"><File>RE_Text.xml</File><File>RE_Great_Engineer_Text.xml</File></UpdateText><AddGameplayScripts id="Add_Railway_Script"><Properties><LoadOrder>5</LoadOrder></Properties><File>RE_BuildRailways.lua</File></AddGameplayScripts><UpdateDatabase id="Add_Railyard"><Properties><LoadOrder>1</LoadOrder></Properties><File>RE_Railway_Buildings.sql</File><File>RE_Railway_Engineer.sql</File></UpdateDatabase><ReplaceUIScript id="Charge_Counter"><Properties><LoadOrder>667</LoadOrder><LuaContext>UnitFlagManager</LuaContext><LuaReplace>UnitFlagManager_RailbuilderCharges.lua</LuaReplace></Properties><File>UnitFlagManager_RailbuilderCharges.lua</File></ReplaceUIScript></InGameActions>]]></InGameActionData>
+    <AssemblyName>Railway Engineer</AssemblyName>
+    <RootNamespace>Railway Engineer</RootNamespace>
+    <Authors>Ben Barrett</Authors>
+    <AssociationData><![CDATA[<Associations>
+  <Dependency type="Dlc" title="Expansion: Gathering Storm" id="4873eb62-8ccc-4574-b784-dda455e74e68" />
+</Associations>]]></AssociationData>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Default' ">
+    <OutputPath>.</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="RE_AdjustTunnels.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="RE_Great_Engineer.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="RE_Railway_Buildings.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="RE_Railway_Engineer.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="UnitFlagManager_RailbuilderCharges.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="RE_Great_Engineer_Text.xml">
+      <SubType>Content</SubType>
+    </Content>
+    <Folder Include="ArtDefs\" />
+    <ArtDef Include="ArtDefs\Units.artdef" />
+    <Folder Include="Database" />
+    <Folder Include="Scripts" />
+    <Folder Include="Text" />
+    <None Include="Railway_Engineering.Art.xml" />
+    <Content Include="RE_BuildRailways.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="RE_Icons.xml" />
+    <Content Include="RE_Text.xml" />
+  </ItemGroup>
+  <Import Project="$(MSBuildLocalExtensionPath)Civ6.targets" />
+</Project>

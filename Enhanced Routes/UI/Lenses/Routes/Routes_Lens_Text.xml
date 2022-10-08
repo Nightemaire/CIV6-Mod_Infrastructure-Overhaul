@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Utilization_Lens_Text -->
+<!-- Author: Nightemaire -->
+<!-- DateCreated: 6/26/2022 14:08:44 -->
+
+<GameData>
+	<BaseGameText>
+		<Row Tag="LOC_HUD_ROUTES_LENS">
+			<Text>Routes</Text>
+		</Row>
+		<Row Tag="LOC_HUD_ROUTES_LENS_TOOLTIP">
+			<Text>Highlights tiles with transportation infrastructure</Text>
+		</Row>
+		<Row Tag="LOC_HUD_SUBTYPE_LENS">
+			<Text>Route Subtypes</Text>
+		</Row>
+		<Row Tag="LOC_HUD_SUBTYPE_LENS_TOOLTIP">
+			<Text>Highlights subtypes of routes</Text>
+		</Row>		
+		<!-- ROUTES -->
+		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_ANCIENT">
+			<Text>Trail</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_MEDIEVAL">
+			<Text>Road</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_INDUSTRIAL">
+			<Text>Asphalt</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_MODERN">
+			<Text>Highway</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_RAILROAD">
+			<Text>Railroad</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_LENS_ROUTE_PILLAGED">
+			<Text>Destroyed Road</Text>
+		</Row>
+		<!-- SUBTYPES -->
+		<Row Tag="LOC_TOOLTIP_LENS_SUBTYPE_PRIMARY">
+			<Text>Primary</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_LENS_SUBTYPE_SECONDARY">
+			<Text>Secondary</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_LENS_SUBTYPE_TERTIARY">
+			<Text>Tertiary</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_LENS_SUBTYPE_OTHER">
+			<Text>Other</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_LENS_SUBTYPE_RR">
+			<Text>Railroad</Text>
+		</Row>
+	</BaseGameText>
+</GameData>

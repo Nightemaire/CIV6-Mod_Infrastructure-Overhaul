@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameData>
+  <!-- For simplicity sake, we're going to reuse existing icons. -->
+  <IconDefinitions>
+    <!-- This is the unit icon for the unit. -->
+    <Row Name="ICON_UNIT_RAILWAY_ENGINEER" Atlas="ICON_ATLAS_UNITS" Index="51"/>
+	<!-- This is the portrait of the unit. -->
+	<Row Name="ICON_UNIT_RAILWAY_ENGINEER_PORTRAIT"	Atlas="ICON_ATLAS_UNIT_PORTRAITS" Index="1"/>
+
+	<Row Name="ICON_BUILDING_RAILYARD" Atlas="ICON_ATLAS_BUILDINGS" Index="22"/>
+  <Row Name="ICON_BUILDING_TCRR_STATION" Atlas="ICON_ATLAS_BUILDINGS" Index="22"/>
+	<Row Name="ICON_BUILDING_RAILYARD_FOW" Atlas="ICON_ATLAS_BUILDINGS_FOW" Index="22"/>
+  <Row Name="ICON_BUILDING_TCRR_STATION_FOW" Atlas="ICON_ATLAS_BUILDINGS_FOW" Index="22"/>
+
+	  <!-- Ethnic specific portrait of the unit.  This changes based on the leader. -->
+    <Row Name="ICON_ETHNICITY_ASIAN_UNIT_PEON_PORTRAIT" Atlas="ICON_ATLAS_ASIAN_UNIT_PORTRAITS" Index="1"/>
+    <Row Name="ICON_ETHNICITY_MEDIT_UNIT_PEON_PORTRAIT" Atlas="ICON_ATLAS_MEDITERRANEAN_UNIT_PORTRAITS" Index="1"/>
+    <Row Name="ICON_ETHNICITY_SOUTHAM_UNIT_PEON_PORTRAIT" Atlas="ICON_ATLAS_SOUTH_AMERICAN_UNIT_PORTRAITS" Index="1"/>
+    <Row Name="ICON_ETHNICITY_AFRICAN_UNIT_PEON_PORTRAIT" Atlas="ICON_ATLAS_AFRICAN_UNIT_PORTRAITS" Index="1"/>
+  </IconDefinitions>
+</GameData>

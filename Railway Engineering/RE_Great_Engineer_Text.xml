@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Localization -->
+<!-- Author: Nightemaire -->
+<!-- DateCreated: 6/18/2022 22:01:17 -->
+<GameData>
+	<BaseGameText>
+		<!-- GREAT PEOPLE -->
+		<Row Tag="LOC_GREAT_PERSON_INDIVIDUAL_THEODORE_JUDAH_NAME">
+			<Text>Theodore Judah</Text>
+		</Row>
+		
+		<Row Tag="LOC_GREATPERSON_THEODORE_JUDAH_ACTIVE">
+			<Text>
+				Instantly builds a Railyard without requiring a Factory, and all Railyards provide an additional +1 [ICON_Production] Production. The first activation sets the starting point for the Transcontinental Railroad, and the second activation sets the end point. Once both charges are used, the land will be claimed and Railroads will be built to connect the two tiles.
+			</Text>
+		</Row>
+
+		<Row Tag="LOC_PEDIA_GREATPEOPLE_PAGE_GREAT_PERSON_INDIVIDUAL_THEODORE_JUDAH_CHAPTER_HISTORY_PARA_1">
+			<Text>
+				Theodore Dehone Judah (March 4, 1826 to November 2, 1863) was an American civil engineer. He was a central figure in the original promotion, establishment, and design of the First Transcontinental Railroad. He found investors for what became the Central Pacific Railroad (CPRR). As chief engineer, he performed much of the route survey work to determine the best alignment for the railroad over the Sierra Nevada, which was completed six years after his death.
+			</Text>
+		</Row>
+
+		<Row Tag="LOC_PEDIA_GREATPEOPLE_PAGE_GREAT_PERSON_INDIVIDUAL_THEODORE_JUDAH_CHAPTER_HISTORY_PARA_2">
+			<Text>
+				Judah died of yellow fever on November 2, 1863. He contracted the disease in Panama on a voyage with his wife to New York City, apparently becoming infected during their land passage across the Isthmus of Panama. He was traveling to New York to seek alternative financing to buy out the major investors. Anna took his body back to Greenfield, Massachusetts, where he was buried in the Pierce family plot in the Federal Street Cemetery. He died before his dream of a transcontinental railroad could be completed.
+			</Text>
+		</Row>
+
+		<Row Tag="LOC_PEDIA_GREATPEOPLE_PAGE_GREAT_PERSON_INDIVIDUAL_THEODORE_JUDAH_CHAPTER_HISTORY_PARA_3">
+			<Text>
+				"In purely engineering retrospect, Judahs achievements would seem nothing short of providential, especially in comparison to modern route surveying efforts. With a minimal survey crew utilizing crude instruments and only draft animals for transportation, Judah was able to lay out a remarkably accurate alignment across the most difficult natural obstacles undertaken up until that time (1861)." J. David Rogers and Charles R. Spinks, ASCE Golden Spike 150th Anniversary History Symposium, Sacramento, CA, May 6, 2019
+			</Text>
+		</Row>
+		
+	</BaseGameText>
+</GameData>

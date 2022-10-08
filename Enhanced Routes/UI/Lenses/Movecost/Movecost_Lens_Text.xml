@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Utilization_Lens_Text -->
+<!-- Author: Nightemaire -->
+<!-- DateCreated: 6/26/2022 14:08:44 -->
+
+<GameData>
+	<BaseGameText>
+		<Row Tag="LOC_HUD_MOVECOST_LENS">
+			<Text>Movement Cost</Text>
+		</Row>
+		<Row Tag="LOC_HUD_MOVECOST_LENS_TOOLTIP">
+			<Text>Shows the movement cost of each tile</Text>
+		</Row>
+		<!-- Labels -->
+		<Row Tag="LOC_TOOLTIP_MOVECOST_LOWEST">
+			<Text>Impassable</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_MOVECOST_LOW">
+			<Text>3</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_MOVECOST_MEDIUM">
+			<Text>2</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_MOVECOST_HIGH">
+			<Text>1</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_MOVECOST_HIGHEST">
+			<Text>Less than 1</Text>
+		</Row>		
+	</BaseGameText>
+</GameData>

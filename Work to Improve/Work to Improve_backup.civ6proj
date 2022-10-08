@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Default" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Default</Configuration>
+    <Name>Work to Improve_backup</Name>
+    <Guid>591508d7-3e75-4fc8-be84-7d5b3f68d0e1</Guid>
+    <ProjectGuid>3795b02a-7e06-4bc1-a330-083b19760e63</ProjectGuid>
+    <ModVersion>1</ModVersion>
+    <Teaser>Less tile building - more empire building</Teaser>
+    <Description>Tiles in your empire will automatically gain an appropriate improvement if left unimproved for long enough, provided they meet other criteria as well. Features and resources aren't removed under any circumstances, but you might get some appeal loss from a mine or two...</Description>
+    <Authors>Nightemaire</Authors>
+    <SpecialThanks>
+    </SpecialThanks>
+    <AffectsSavedGames>true</AffectsSavedGames>
+    <SupportsSinglePlayer>true</SupportsSinglePlayer>
+    <SupportsMultiplayer>true</SupportsMultiplayer>
+    <SupportsHotSeat>false</SupportsHotSeat>
+    <CompatibleVersions>2.0</CompatibleVersions>
+    <AssemblyName>Improved Improving Improvements</AssemblyName>
+    <RootNamespace>Improved Improving Improvements</RootNamespace>
+    <InGameActionData><![CDATA[<InGameActions><AddGameplayScripts id="ImprovementAutomation"><Properties><LoadOrder>27000</LoadOrder></Properties><File>Improvement_Automation.lua</File></AddGameplayScripts><ReplaceUIScript id="UtilizationTooltip"><Properties><LuaContext>PlotToolTip</LuaContext><LuaReplace>PlotToolTip_Utilization.lua</LuaReplace><LoadOrder>14050</LoadOrder></Properties><File>PlotToolTip_Utilization.lua</File></ReplaceUIScript><ImportFiles id="UtilizationTooltipImport"><Properties><LoadOrder>14010</LoadOrder></Properties><File>PlotToolTip_Utilization.lua</File></ImportFiles><ImportFiles id="ConfigurationImport"><Properties><LoadOrder>14000</LoadOrder></Properties><File>AutoImprovements_Config.lua</File></ImportFiles><UpdateText id="Update Text"><File>AutoImprovements_Text.xml</File><File>UI/Lenses/Utilization/Utilization_Lens_Text.xml</File></UpdateText><ImportFiles id="AddLenses"><Properties><LoadOrder>150</LoadOrder><Context>InGame</Context></Properties><File>UI/Lenses/Utilization/ModLens_Utilization.lua</File></ImportFiles><UpdateDatabase id="AddLensColors"><Properties><LoadOrder>0</LoadOrder></Properties><File>UI/Lenses/Utilization/Utilization_Lens_Colors.sql</File></UpdateDatabase><AddGameplayScripts id="LoadSpeedVerySlow"><Properties><LoadOrder>1</LoadOrder></Properties><Criteria>WTI_Speed_VerySlow</Criteria><File>Setup/Setup_Speed_VerySlow.lua</File></AddGameplayScripts><AddGameplayScripts id="LoadSpeedSlow"><Properties><LoadOrder>2</LoadOrder></Properties><Criteria>WTI_Speed_Slow</Criteria><File>Setup/Setup_Speed_Slow.lua</File></AddGameplayScripts><AddGameplayScripts id="LoadSpeedAverage"><Properties><LoadOrder>3</LoadOrder></Properties><Criteria>WTI_Speed_Average</Criteria><File>Setup/Setup_Speed_Average.lua</File></AddGameplayScripts><AddGameplayScripts id="LoadSpeedFast"><Properties><LoadOrder>4</LoadOrder></Properties><Criteria>WTI_Speed_Fast</Criteria><File>Setup/Setup_Speed_Fast.lua</File></AddGameplayScripts><AddGameplayScripts id="LoadSpeedVeryFast"><Properties><LoadOrder>5</LoadOrder></Properties><Criteria>WTI_Speed_VeryFast</Criteria><File>Setup/Setup_Speed_VeryFast.lua</File></AddGameplayScripts></InGameActions>]]></InGameActionData>
+    <ActionCriteriaData><![CDATA[<ActionCriteria><Criteria id="expansion1"><AlwaysMet><GameCoreInUse>expansion1</GameCoreInUse></AlwaysMet></Criteria><Criteria id="expansion2"><AlwaysMet><GameCoreInUse>expansion2</GameCoreInUse></AlwaysMet></Criteria><Criteria id="WTI_Speed_VerySlow"><ConfigurationValueMatches><ConfigurationId>WTI_IMPROVEMENT_THRESHOLD</ConfigurationId><Group>Game</Group><Value>1</Value></ConfigurationValueMatches></Criteria><Criteria id="WTI_Speed_Slow"><ConfigurationValueMatches><ConfigurationId>WTI_IMPROVEMENT_THRESHOLD</ConfigurationId><Group>Game</Group><Value>2</Value></ConfigurationValueMatches></Criteria><Criteria id="WTI_Speed_Average"><ConfigurationValueMatches><ConfigurationId>WTI_IMPROVEMENT_THRESHOLD</ConfigurationId><Group>Game</Group><Value>3</Value></ConfigurationValueMatches></Criteria><Criteria id="WTI_Speed_Fast"><ConfigurationValueMatches><ConfigurationId>WTI_IMPROVEMENT_THRESHOLD</ConfigurationId><Group>Game</Group><Value>4</Value></ConfigurationValueMatches></Criteria><Criteria id="WTI_Speed_VeryFast"><ConfigurationValueMatches><ConfigurationId>WTI_IMPROVEMENT_THRESHOLD</ConfigurationId><Group>Game</Group><Value>5</Value></ConfigurationValueMatches></Criteria></ActionCriteria>]]></ActionCriteriaData>
+    <ModProperties>
+      <CustomProperties />
+    </ModProperties>
+    <FrontEndActionData><![CDATA[<FrontEndActions><UpdateText id="Setup_Text"><Properties><LoadOrder>1</LoadOrder></Properties><File>Setup/WTI_GameSetup_LOC.sql</File></UpdateText><UpdateDatabase id="Setup_Options"><Properties><LoadOrder>9999</LoadOrder></Properties><File>Setup/WTI_GameSetup.sql</File></UpdateDatabase></FrontEndActions>]]></FrontEndActionData>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Default' ">
+    <OutputPath>.</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="AutoImprovements_Config.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="AutoImprovements_Text.xml">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Improvement_Automation.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="PlotToolTip_Utilization.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\Setup_Speed_Average.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\Setup_Speed_Fast.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\Setup_Speed_Slow.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\Setup_Speed_VeryFast.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\Setup_Speed_VerySlow.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\WTI_GameSetup.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\WTI_GameSetup_LOC.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="UI\Lenses\Utilization\ModLens_Utilization.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="UI\Lenses\Utilization\Utilization_Lens_Colors.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="UI\Lenses\Utilization\Utilization_Lens_Text.xml">
+      <SubType>Content</SubType>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Setup" />
+    <Folder Include="UI" />
+    <Folder Include="UI\Lenses" />
+    <Folder Include="UI\Lenses\Utilization" />
+  </ItemGroup>
+  <Import Project="$(MSBuildLocalExtensionPath)Civ6.targets" />
+</Project>

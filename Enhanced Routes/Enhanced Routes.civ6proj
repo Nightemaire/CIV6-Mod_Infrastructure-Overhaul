@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Default" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Default</Configuration>
+    <Name>Enhanced Routes</Name>
+    <Guid>3154315d-7970-4173-b7d6-9cbfcc949ad0</Guid>
+    <ProjectGuid>398a3794-47da-48b7-b16a-f8d9f29491b6</ProjectGuid>
+    <ModVersion>1</ModVersion>
+    <Teaser>Enhanced road creation</Teaser>
+    <Description>Roads now come in three types, Primary, Secondary, and Tertiary. The type is separate from level (Ancient, Classical, etc).
+
+When an improvement is added to the map, tertiary roads will be created to connect it to the nearest road within the city's borders. When a district is finished, secondary roads will automatically be built between it and the city, as well as other nearby districts.
+
+Traders still create roads as they travel, and this is still the only way to create a Primary route.
+
+As you advance through the eras, secondary and tertiary routes will always lag behind whatever level you're at.</Description>
+    <AffectsSavedGames>false</AffectsSavedGames>
+    <SupportsSinglePlayer>true</SupportsSinglePlayer>
+    <SupportsMultiplayer>true</SupportsMultiplayer>
+    <SupportsHotSeat>true</SupportsHotSeat>
+    <CompatibleVersions>2.0</CompatibleVersions>
+    <InGameActionData><![CDATA[<InGameActions><AddGameplayScripts id="Add_Main_Script"><Properties><LoadOrder>10</LoadOrder></Properties><File>Enhanced_Routes.lua</File></AddGameplayScripts><ImportFiles id="Import_Lenses"><Properties><LoadOrder>150</LoadOrder><Context>InGame</Context></Properties><File>UI/Lenses/Movecost/ModLens_MovementCost.lua</File><File>UI/Lenses/Routes/ModLens_Routes.lua</File></ImportFiles><UpdateDatabase id="Add_Lens_Colors"><Properties><LoadOrder>0</LoadOrder></Properties><File>UI/Lenses/Movecost/Movecost_Lens_Colors.sql</File><File>UI/Lenses/Routes/Routes_Lens_Colors.sql</File></UpdateDatabase><UpdateText id="Add_Lens_Text"><File>UI/Lenses/Movecost/Movecost_Lens_Text.xml</File><File>UI/Lenses/Routes/Routes_Lens_Text.xml</File></UpdateText><ImportFiles id="Import_Support"><Properties><LoadOrder>4</LoadOrder></Properties><File>Enhanced_Routes_Config.lua</File></ImportFiles><UpdateText id="Replace_Route_Text"><File>Update_Route_Names.sql</File></UpdateText><AddGameplayScripts id="Setup_Connect_Improvements"><Properties><LoadOrder>5</LoadOrder></Properties><Criteria>ER_CONNECT_IMPROVEMENTS</Criteria><File>Setup/Setup_Connect_Improvements.lua</File></AddGameplayScripts><AddGameplayScripts id="Setup_Connect_Districts"><Properties><LoadOrder>6</LoadOrder></Properties><Criteria>ER_CONNECT_DISTRICTS</Criteria><File>Setup/Setup_Connect_Districts.lua</File></AddGameplayScripts><AddGameplayScripts id="Setup_Connect_Cities"><Properties><LoadOrder>7</LoadOrder></Properties><Criteria>ER_CONNECT_CITIES</Criteria><File>Setup/Setup_Connect_Cities.lua</File></AddGameplayScripts></InGameActions>]]></InGameActionData>
+    <AssemblyName>Railway Engineer</AssemblyName>
+    <RootNamespace>Railway Engineer</RootNamespace>
+    <Authors>Ben Barrett</Authors>
+    <AssociationData><![CDATA[<Associations>
+  <Dependency type="Dlc" title="Expansion: Gathering Storm" id="4873eb62-8ccc-4574-b784-dda455e74e68" />
+</Associations>]]></AssociationData>
+    <FrontEndActionData><![CDATA[<FrontEndActions><UpdateText id="Add_Config_Text"><Properties><LoadOrder>1</LoadOrder></Properties><File>Setup/Routes_GameSetup_LOC.sql</File></UpdateText><UpdateDatabase id="Add_Config_Options"><Properties><LoadOrder>9999</LoadOrder></Properties><File>Setup/Routes_GameSetup.sql</File></UpdateDatabase></FrontEndActions>]]></FrontEndActionData>
+    <ActionCriteriaData><![CDATA[<ActionCriteria><Criteria id="ER_CONNECT_IMPROVEMENTS"><ConfigurationValueMatches><ConfigurationId>ER_CONNECT_IMPROVEMENTS</ConfigurationId><Group>Game</Group><Value>1</Value></ConfigurationValueMatches></Criteria><Criteria id="ER_CONNECT_DISTRICTS"><ConfigurationValueMatches><ConfigurationId>ER_CONNECT_DISTRICTS</ConfigurationId><Group>Game</Group><Value>1</Value></ConfigurationValueMatches></Criteria><Criteria id="ER_CONNECT_CITIES"><ConfigurationValueMatches><ConfigurationId>ER_CONNECT_CITIES</ConfigurationId><Group>Game</Group><Value>1</Value></ConfigurationValueMatches></Criteria></ActionCriteria>]]></ActionCriteriaData>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Default' ">
+    <OutputPath>.</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Enhanced_Routes.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Enhanced_Routes_Config.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\Routes_GameSetup.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\Routes_GameSetup_LOC.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\Setup_Connect_Cities.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\Setup_Connect_Districts.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Setup\Setup_Connect_Improvements.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="UI\Lenses\Movecost\ModLens_MovementCost.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="UI\Lenses\Movecost\Movecost_Lens_Colors.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="UI\Lenses\Movecost\Movecost_Lens_Text.xml">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="UI\Lenses\Routes\ModLens_Routes.lua">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="UI\Lenses\Routes\Routes_Lens_Colors.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="UI\Lenses\Routes\Routes_Lens_Text.xml">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Update_Route_Names.sql">
+      <SubType>Content</SubType>
+    </Content>
+    <Folder Include="ArtDefs\" />
+    <ArtDef Include="ArtDefs\Units.artdef" />
+    <Folder Include="Setup" />
+    <Folder Include="UI\" />
+    <Folder Include="UI\Lenses\" />
+    <Folder Include="UI\Lenses\Movecost\" />
+    <Folder Include="UI\Lenses\Routes\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildLocalExtensionPath)Civ6.targets" />
+</Project>

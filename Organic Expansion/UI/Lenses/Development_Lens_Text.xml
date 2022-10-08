@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Utilization_Lens_Text -->
+<!-- Author: Nightemaire -->
+<!-- DateCreated: 6/26/2022 14:08:44 -->
+
+<GameData>
+	<BaseGameText>
+		<Row Tag="LOC_HUD_DEVELOPMENT_LENS">
+			<Text>Urban Development</Text>
+		</Row>
+		<Row Tag="LOC_HUD_DEVELOPMENT_LENS_TOOLTIP">
+			<Text>Highlights the development status of your cities</Text>
+		</Row>
+		<Row Tag="LOC_HUD_POPULATION_LENS">
+			<Text>Population</Text>
+		</Row>
+		<Row Tag="LOC_HUD_POPULATION_LENS_TOOLTIP">
+			<Text>Shows the population of each tile</Text>
+		</Row>
+
+		<!-- LABELS -->
+		<Row Tag="LOC_TOOLTIP_POPULATION_LOWEST">
+			<Text>Less than 4</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_POPULATION_LOW">
+			<Text>4-7</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_POPULATION_MEDIUM">
+			<Text>8-11</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_POPULATION_HIGH">
+			<Text>12-15</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_POPULATION_HIGHEST">
+			<Text>More than 16</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_IMPROVEMENT">
+			<Text>Improvement</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_DISTRICT">
+			<Text>District</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_VILLAGE">
+			<Text>Village</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_TOWNSHIP">
+			<Text>Township</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_CITY">
+			<Text>City</Text>
+		</Row>
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_METRO">
+			<Text>Metropolis</Text>
+		</Row>
+	</BaseGameText>
+</GameData>

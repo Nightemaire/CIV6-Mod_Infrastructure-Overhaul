@@ -1,0 +1,41 @@
+== Changes ==
+
+Railway Engineer
+- Added UI elements to the unit panel to display charges remaining
+-- If you use the Better Build Charges mod, the number of charges will also be displayed on the unit icon
+- Engineers now have two charges to construct mountain tunnels
+- Fixed an issue where charges wouldn't be accurately preserved between saves
+
+Railyard
+- Reduced the production yield from 4 to 2
+- When complete, railroads will now be built from the Railyard to the City
+- Reduced Great Engineer points to from 2 to 1
+
+Theodore Judah
+- Now has 2 charges - each still builds a railyard and increases regional range
+- Regional range increase reduced from 3 to 2
+- Each activation now also builds a "Transcontinental Railstation" in the city's center
+- Fixed an issue where his ability might not function correctly between saves
+
+Tunnels
+- Changed the prerequisite tech from Chemistry to Metal Casting (Early Modern -> Late Renaissance)
+- Can now be built by Railway Engineers in addition to Military Engineers
+
+== New Features ==
+
+Transcontinental Railstation
+- A new building in the city center (+5 gold, +2 Great Merchant Points)
+- Only two can exist in your empire
+- They require a lot of production - so place them wisely...
+- Once both are complete, if there is a traversable path (see requirements below), construction of the Transcontinental Railroad will commence
+- Traversable Requirements:
+- - Must be connected by land - the route will fail if water separates the two stations
+- - There must be a path that is either owned entirely by you, or by no one. The route will not pass through other player's borders
+- - Natural Wonders and volcanos are not valid tiles for the route
+
+Transcontinental Railroad
+- Once initiated, the required tiles for the route will be claimed for your empire
+- Railroads will be automatically built out from each station to meet in the middle, at a rate adjusted for game speed
+- The route will tunnel through mountains if it makes sense
+- The route prefers flatland tiles over hills, but also attempts to maintain a straight course where possible
+
