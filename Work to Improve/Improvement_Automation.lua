@@ -14,6 +14,7 @@
 --------------------------------------------------------------
 print("IMPROVING IMPROVEMENTS!!! 16:16");
 
+include("SupportFunctions");
 include "AutoImprovements_Config.lua";
 
 -- ===========================================================================
@@ -21,6 +22,7 @@ include "AutoImprovements_Config.lua";
 -- ===========================================================================
 local GameSpeedType = GameConfiguration.GetGameSpeedType()
 local SpeedMultiplier = GameInfo.GameSpeeds[GameSpeedType].CostMultiplier;
+local TurnMultiplier = math.floor(GameInfo.GameSpeeds[GameSpeedType].CostMultiplier / 50)
 
 local NO_TEAM = -1;
 
@@ -74,7 +76,7 @@ local UtilizationWorked = Utilization_Bonus_If_Worked	-- FROM CONFIG
 local AllowAppealReduction = Allow_Appeal_Reduction		-- FROM CONFIG
 local Threshold = AutoImproveThreshold					-- FROM CONFIG
 
-UtilizationMax = AutoImproveThreshold * 1.5
+UtilizationMax = Threshold * 1.5
 
 
 -- ===========================================================================
@@ -108,52 +110,15 @@ print("Improvement Threshold = "..AutoImproveThreshold);
 -- ===========================================================================
 -- PRIMARY EVENT HANDLERS
 -- ===========================================================================
---[[
-	
-function OnTurnBegin(turn)
-	-- Initialize the plots if this hasn't been done yet
-	if Game.GetProperty("UTIL_IS_INIT") == nil then
-		for iX = 0, g_iW - 1 do
-			for iY = 0, g_iH - 1 do			
-				local iPlotIndex = iY * g_iW + iX;
-				local pPlot = Map.GetPlotByIndex(iPlotIndex);
-				InitializePlotUtilization(pPlot)
-			end
-		end
-
-		Game.SetProperty("UTIL_IS_INT", true)
-	end
-
-	---- Do all our utilization updates right at the start of the game turn
-	--for iX = 0, g_iW - 1 do
-		--for iY = 0, g_iH - 1 do
---
-			--local iPlotIndex = iY * g_iW + iX;
-			--local pPlot = Map.GetPlotByIndex(iPlotIndex);
---
-			--RecalcPlotUtilGrowth(iX, iY)
---
-			--if pPlot:IsWater() then
---
-			--elseif pPlot:IsMountain() then
---
-			--elseif pPlot:IsImpassable() then
---
-			--else
-				--UpdatePlotUtilization(pPlot)
-			--end
-		--end
-	--end
-end
-GameEvents.OnGameTurnStarted.Add(OnTurnBegin);
 
 function OnPlayerTurnStarted(playerID:number, isFirstTime)
-	UpdatePlayerCities(playerID)
+	local currentGameTurn = Game.GetCurrentGameTurn()
+	TryPlayerImprovements(playerID, currentGameTurn)
 
 	if Debugging then
 		-- Pillage Testing
 		if BurnMePlease and Barbing then
-			if Game.GetCurrentGameTurn() >= BarbSpawnTurn then
+			if currentGameTurn >= BarbSpawnTurn then
 				SpawnBarbOnPlot(BarbSpawnPlot);
 				Barbing = false;
 			end
@@ -162,177 +127,224 @@ function OnPlayerTurnStarted(playerID:number, isFirstTime)
 end
 GameEvents.PlayerTurnStarted.Add(OnPlayerTurnStarted);
 
---]]
+-- ===========================================================================
+-- OPTIMIZATION
+-- ===========================================================================
 
+-- Store the utilization data as a struct for efficiency
+hstructure UtilizationData
+	Utilization		:number;
+	Growth			:number;
+	LastUpdate		:number;
+	ImprovesOn		:number;
+end
+
+-- Table Management
+function GetTables(player)
+	return player:GetProperty("AUTO_IMPROVE_TURN_TABLE"), player:GetProperty("AUTO_IMPROVE_PLOT_TABLE")
+end
+function SetTables(player, TurnTable, PlotTable)
+	if player ~= nil then
+		player:SetProperty("AUTO_IMPROVE_TURN_TABLE", TurnTable)
+		player:SetProperty("AUTO_IMROVE_PLOT_TABLE", PlotTable)
+	end
+end
+function RemovePlotFromTables(playerID : number, plotID : number)
+	if notNilOrNegative(plotID) then
+		local player = Players[playerID]
+		local TurnTable, PlotTable = GetTables(player)
+
+		local turn = table.remove(PlotTable, plotID)
+		TurnTable[turn][plotID] = nil
+
+		SetTables(player, TurnTable, PlotTable)
+	end
+end
+function UpdateImprovementTables(playerID:number, plotID:number, turn:number)
+	if not(playerID == nil or plotID == nil or turn == nil) then
+		local player = Players[playerID]
+
+		local TurnTable, PlotTable = GetTables(player)
+		
+		if TurnTable == nil then TurnTable = {}; end
+		if PlotTable == nil then PlotTable = {}; end
+
+		if PlotTable[plotID] ~= nil then
+			-- Need to remove the old entry first by setting it nil
+			local OldTurn = PlotTable[plotID]
+			TurnTable[OldTurn][plotID] = nil
+		end
+
+		PlotTable[plotID] = turn
+		TurnTable[turn][plotID] = true
+
+		SetTables(player, TurnTable, PlotTable)
+	else
+		print("Bad args to function: <UpdateImprovementTables>")
+	end
+end
+function ChangePlotOwner(plotID : number, newOwnerID : number, oldOwnerID : number)
+	if not(plotID == nil or newOwnerID == nil or oldOwnerID == nil) then
+		local newOwner = Players[newOwnerID]
+		local oldOwner = Players[oldOwnerID]
+
+		local newTurnTable, newPlotTable = GetTables(newOwner)
+		local oldTurnTable, oldPlotTable = GetTables(oldOwner)
+
+		-- Transfer the plot table entry
+		local turn = oldPlotTable[plotID]
+		newPlotTable[plotID] = turn
+		oldPlotTable[plotID] = nil
+
+		-- Remove the old turn table entry and add the new
+		oldTurnTable[turn][plotID] = nil
+		newTurnTable[turn][plotID] = true
+
+		SetTables(newOwner, newTurnTable, newPlotTable)
+		SetTables(oldOwner, oldTurnTable, oldPlotTable)
+	end
+end
 
 -- ===========================================================================
 -- UTILIZATION UPDATES AND INITIALIZATION
 -- ===========================================================================
 
-function InitializePlotUtilization(iX, iY)
-	RecalcPlotUtilGrowth(plot:GetX(), plot:GetY())
-	--UpdatePlotUtilization(plot)
+function InitializePlot(plotID)	
+	local pPlot = Map.GetPlotByIndex(plotID);
+
+	-- Initialize the struct
+	local newUtilData = hmake UtilizationData {
+		Utilization = 0,
+		Growth = 0,
+		LastUpdate = 0,
+		ImprovesOn = 0,
+	};
+
+	pPlot:SetProperty("UTILIZATION_DATA", newUtilData)
+
+	-- Calculate the growth and update the utilization
+	local growth = CalculatePlotGrowth(plotID)
+	UpdatePlotUtilData(plotID, growth)
 end
 
-function UpdatePlotUtilization(plot : object, CityData : table)
-	local CurrentTurn = Game.GetCurrentGameTurn()
-	local LastUpdate = plot.GetProperty("LAST_UTIL_UPDATE")
-	local TurnsSinceUpdate = CurrentTurn - LastUpdate
-	local plotX = plot:GetX()
-	local plotY = plot:GetY()
-	local plotID = plot:GetIndex()
+function UpdatePlotUtilData(plotID : number, newGrowth : number)
+	local pPlot = Map.GetPlotByIndex(plotID)
+	local UtilData = pPlot:GetProperty("UTILIZATION_DATA")
+	local currentTurn = Game.GetCurrentGameTurn()
 
-	if CityData == nil then
-		CityData = GetCityData(plot)
+	-- Check to see if the Utilization value needs an update
+	if not(currentTurn == UtilData.LastUpdate) then
+		local currentUtil = UtilData.Utilization;
+		local timeSinceLastUpdate = currentTurn - UtilData.LastUpdate;
+		UtilData.Utilization = currentUtil + (timeSinceLastUpdate * UtilData.Growth);
+		UtilData.LastUpdate = currentTurn;
 	end
 
-	local ActionItems = {}
+	-- Get the growth, if the arg newGrowth is nil we just use the current growth
+	local growth = UtilData.Growth
+	if newGrowth ~= nil then growth = newGrowth; end
 
-	-- Get some information about the plot
-	local owner			= plot:GetOwner()
-	local isCity		= plot:IsCity()
-	local isDistrict	= plot:GetDistrictType() >= 0
-	local isWonder		= plot:GetWonderType() >= 0
-	local isPark		= plot:IsNationalPark()
+	-- Get the difference between the improvement threshold and the current utilization
+	local diff = Threshold - UtilData.Utilization
+	-- Number of turns is the diff divided by the growth rounded up
+	local turns = math.ceil(diff / growth)
+	-- And so the expected improvement turn is the number of turns plus the current turn
+	local ImprovementTurn = currentTurn + turns
 
-	local PlotIsImprovable = not(isCity) and not(isDistrict) and not(isWonder) and not(isPark)
+	UtilData.ImprovesOn = ImprovementTurn
+	UtilData.Growth = growth
 
-	-- If we can't figure out what else to do, we'll keep utilization the same
-	local NewUtilization = getUtilization(plot)
+	pPlot:SetProperty("UTILIZATION_DATA", UtilData)
 
-	if PlotIsImprovable then
-		local growth = plot:GetProperty("PLOT_UTIL_GROWTH");
-		if growth == nil then growth = 0; end
-		NewUtilization = NewUtilization + (growth * TurnsSinceUpdate)
+	-- We can update the tables for the owning player as well
+	local owner = pPlot:GetOwner()
+	if notNilOrNegative(owner) then
+		UpdateImprovementTables(pPlot:GetOwner(), plotID, ImprovementTurn)
+	end
 
-		if plot:GetImprovementType() < 0 then
-			-- Unimproved			
-			local AutoImprovement = GetAutoImprovementType(plot)
-			if NewUtilization >= Threshold then
-				QueueImprovement(plotID, AutoImprovement, CityData)
-			end
-		else
-			-- Already improved
-			if NewUtilization >= Threshold then
-				QueueRepair(plotID)
+	return UtilData
+end
+
+function GetTilesToImprove(playerID:number, turn:number)
+	local player = Players[playerID]
+	local TurnTable, PlotTable = GetTables(player)
+
+	local plots = {}
+
+	if TurnTable[turn] ~= nil then
+		-- Remove the entry for this turn
+		local TurnEntry = table.remove(TurnTable, turn)
+		for k,v in orderedPairs(TurnEntry) do
+			table.insert(plots, Map.GetPlotByIndex(k))
+			-- Remove the plot from the map
+			table.remove(PlotTable, k)
+		end
+		-- Update the tables
+		SetTables(player, TurnTable, PlotTable)
+	end
+
+	return plots
+end
+
+function TryPlayerImprovements(playerID:number, turn:number)
+	local potentials = GetTilesToImprove(playerID, turn)
+	if #potentials > 0 then
+		for _,pPlot in orderedPairs(potentials) do
+			local plotID = pPlot:GetIndex()
+			local city = Cities.GetPlotWorkingCity(plotID)
+			local improved = TryMakeImprovement(pPlot, GetAutoImprovementType(pPlot), IsAquacultureAvailable(city))
+
+			if not(improved) then
+				-- Delay 5 turns (modified by game speed) before trying again
+				local nextAttempt = turn + (5 * TurnMultiplier)
+				UpdateImprovementTables(playerID, plotID, nextAttempt)
 			end
 		end
 	end
-		
-	setUtilization(plot, NewUtilization)
-	plot.SetProperty("LAST_UTIL_UPDATE", CurrentTurn)
-
-	return NewUtilization
 end
 
-function RecalcPlotUtilGrowth(iX, iY)
-	local plot = Map.GetPlot(iX, iY)
+function CalculatePlotGrowth(plotID: number)
+	local plot = Map.GetPlotByIndex(plotID)
 
-	-- Get plot details
-	local owner			= plot:GetOwner()
-	local workerCount	= plot:GetWorkerCount()
-	local currentUtil	= getUtilization(plot)
-	local appeal		= plot:GetAppeal()
-	local isFreshWater	= plot:IsFreshWater()
-	local hasRoute		= plot:IsRoute()
-	local yield			= plot:GetYield()	-- This sums all yields on the plot
-	local distToCity	= FindClosestCity(iX, iY, 10)
-
-	-- Set the base growth to the tile's appeal (can be negative)
-	-- If negative appeal, and unworked, utilization will drop back to zero
-	local growth = appeal
-
-	-- Subtract how far the plot is from the city (if adjacent subtract nothing)
-	-- << SHOULD REPLACE THIS WITH A PATH DISTANCE THAT ACCOUNTS FOR ROUTES >>
-	--growth = growth - (distToCity - 1)
-
-	-- Growth from yields are fractional, but we want to take the floor anyway
-	growth = growth + math.floor(yield * GROWTH_YIELD)
-
-	-- Check for some other growths
-	if isFreshWater then growth = growth + GROWTH_FRESHWATER; end
-	if hasRoute then
-		local subType = plot:GetProperty("RouteSubType")
-		if subType == nil then subType = 3; end
-		-- Subtract the route subtype, primary routes add the most benefit
-		growth = growth + GROWTH_HASROUTE - subType
-	end
-					
-	-- Add to the growth if the tile is being worked
-	if workerCount > 0 then growth = growth + UtilizationWorked; end
-
-	-- Scale the growth so it is compatible with utilization
-	growth = growth * UtilizationScalar
-
-	plot:SetProperty("PLOT_UTIL_GROWTH", growth);
-end
-
-function getUtilization(plot : object)
-	local util = plot:GetProperty("PLOT_UTILIZATION");
-	if util == nil then util = 0; end
-	return util;
-end
-
-function setUtilization(plot : object, value)
 	if plot ~= nil then
-		plot:SetProperty("PLOT_UTILIZATION", value);
-	else
-		print("Tried to set utilization but the plot was NIL");
-	end
-end
+		-- Get plot details
+		local owner			= plot:GetOwner()
+		local workerCount	= plot:GetWorkerCount()
+		local appeal		= plot:GetAppeal()
+		local isFreshWater	= plot:IsFreshWater()
+		local hasRoute		= plot:IsRoute()
+		local yield			= plot:GetYield()	-- This sums all yields on the plot
+		local distToCity	= FindClosestCity(iX, iY, 10)
 
--- Action Queue
-local ActionQueue = {}
+		-- Set the base growth to the tile's appeal (can be negative)
+		-- If negative appeal, and unworked, utilization will drop back to zero
+		local growth = appeal
 
-function QueueAction(actionID, plotID, details)
-	local newAction = {}
-	newAction.ID = actionID
-	newAction.plot = plotID
-	newAction.details = details
+		-- Subtract how far the plot is from the city (if adjacent subtract nothing)
+		-- << SHOULD REPLACE THIS WITH A PATH DISTANCE THAT ACCOUNTS FOR ROUTES >>
+		--growth = growth - (distToCity - 1)
 
-	table.insert(ActionQueue, newAction)
-end
+		-- Growth from yields are fractional, but we want to take the floor anyway
+		growth = growth + math.floor(yield * GROWTH_YIELD)
 
-function QueueImprovement(plotID, improvement, hasAquaculture)
-	local details = {}
-	details.improvement = improvement
-	details.HasAquaculture = hasAquaculture
-
-	QueueAction("IMPROVE", plotID, details)
-end
-
-function QueueRepair(plotID)
-	QueueAction("REPAIR", plotID)
-end
-
-function PerformAllActions()
-	local N_Actions = #(ActionQueue)
-	--print("There are "..N_Actions.." Actions to execute")
-	if N_Actions > 0 then
-		for k,a in pairs(ActionQueue) do
-			PerformAction(a)
+		-- Check for some other growths
+		if isFreshWater then growth = growth + GROWTH_FRESHWATER; end
+		if hasRoute then
+			local subType = plot:GetProperty("RouteSubType")
+			if subType == nil then subType = 3; end
+			-- Subtract the route subtype, primary routes add the most benefit
+			growth = growth + GROWTH_HASROUTE - subType
 		end
-		ActionQueue = {}
-	end
-end
+						
+		-- Add to the growth if the tile is being worked
+		if workerCount > 0 then growth = growth + UtilizationWorked; end
 
-function PerformAction(action)
-	if action ~= nil then
-		local ID = action.ID
-		local plot = Map.GetPlotByIndex(action.plot)
-		local details = action.details
-		if ID == "IMPROVE" then
-			TryMakeImprovement(plot, details.improvement, details.HasAquaculture)
-		elseif ID == "REPAIR" then
-			TryRepairPlot(TryRepairPlot)
-		else
-			print("Action "..ID.." not found")
-		end
-	else
-		print("Action was nil")
+		-- Scale the growth so it is compatible with utilization
+		return growth * UtilizationScalar
 	end
-end
 
+	return nil
+end
 
 -- ===========================================================================
 -- AUTO IMPROVEMENTS AND MAINTENANCE
@@ -345,8 +357,8 @@ function UpdatePlayerCities(playerID)
 		-- Iterate over all cities
 		for iCityIndex, city in cities:Members() do
 			local data = GetCityData(city)
-			for k,plot in pairs(city:GetOwnedPlots()) do
-				RecalcPlotUtilGrowth(plot:GetX(), plot:GetY())
+			for k,plot in orderedPairs(city:GetOwnedPlots()) do
+				CalculateUtilGrowth(plot:GetX(), plot:GetY())
 				UpdatePlotUtilization(plot, data)
 			end
 		end
@@ -359,7 +371,7 @@ function RecacheImprovableTiles(playerID, cityID)
 	local PlotCache = {}
 	local city = CityManager.GetCity(playerID, cityID)
 
-	for k,plot in pairs(city:GetOwnedPlots()) do
+	for k,plot in orderedPairs(city:GetOwnedPlots()) do
 		repeat
 			if plot:IsCity() then break; end
 			if plot:GetDistrictType() >= 0 then break; end
@@ -378,7 +390,7 @@ function RecalcUtilizationInCity(playerID, cityID)
 	local plots = city.GetProperty("CACHED_PLOTS")
 	local data = GetCityData(city)
 
-	for k,plot in pairs(plots) do
+	for k,plot in orderedPairs(plots) do
 		UpdatePlotUtilization(plot, data)
 	end
 end
@@ -585,19 +597,19 @@ local RecalcUtilEvents = {
 }
 
 if #InitGrowthEvents > 0 then
-	for i,event in pairs(InitGrowthEvents) do
+	for i,event in orderedPairs(InitGrowthEvents) do
 		event.Add(InitializePlotUtilization)
 	end
 end
 
 if #PlotRecalcGrowthEvents > 0 then
-	for i,event in pairs(PlotRecalcGrowthEvents) do
-		event.Add(RecalcPlotUtilGrowth)
+	for i,event in orderedPairs(PlotRecalcGrowthEvents) do
+		event.Add(CalculateUtilGrowth)
 	end
 end
 
 if #RecalcUtilEvents > 0 then
-	for i,event in pairs(RecalcUtilEvents) do
+	for i,event in orderedPairs(RecalcUtilEvents) do
 		event.Add(UpdatePlotUtilization)
 	end
 end
@@ -656,7 +668,7 @@ end
 function OnCityPopChanged(cityOwner, cityID, ChangeAmount)
 	local city = CityManager.GetCity(cityOwner, getCity)
 	local data = GetCityData(city)
-	for k,plot in pairs(city:GetOwnedPlots()) do
+	for k,plot in orderedPairs(city:GetOwnedPlots()) do
 		UpdatePlotUtilization(plot, data)
 	end
 end
@@ -667,9 +679,9 @@ function OnWorkerChanged(cityOwner, cityID, iX, iY)
 	--local pPlayer = PlayerManager.GetPlayer(cityOwner)
 	--local city = pPlayer:GetCities():FindID(cityID)
 
-	--for k,plot in pairs(city:GetOwnedPlots()) do
+	--for k,plot in orderedPairs(city:GetOwnedPlots()) do
 	local plot = Map.GetPlot(iX, iY)
-	RecalcPlotUtilGrowth(plot:GetX(), plot:GetY())
+	CalculateUtilGrowth(plot:GetX(), plot:GetY())
 		--UpdatePlotUtilization(plot, CityData)
 	--end
 end
@@ -677,7 +689,7 @@ Events.CityWorkerChanged.Add(OnWorkerChanged);					-- (owner, cityID, iX, iY)
 
 -- Tile Ownership Changed
 function OnTileOwnershipChanged(cityOwner, cityID)
-	--RecalcPlotUtilGrowth(plot:GetX(), plot:GetY())
+	--CalculateUtilGrowth(plot:GetX(), plot:GetY())
 end
 Events.CityTileOwnershipChanged.Add(OnTileOwnershipChanged);	-- (owner, cityID)
 
@@ -692,8 +704,8 @@ function OnCityConquered(newOwner, oldOwner, newCityID, iX, iY)
 	local pPlayer = PlayerManager.GetPlayer(newOwner)
 	local city = pPlayer:GetCities():FindID(newCityID)
 
-	for k,plot in pairs(city:GetOwnedPlots()) do
-		RecalcPlotUtilGrowth(plot:GetX(), plot:GetY())
+	for k,plot in orderedPairs(city:GetOwnedPlots()) do
+		CalculateUtilGrowth(plot:GetX(), plot:GetY())
 		--UpdatePlotUtilization(plot, CityData)
 	end
 end
