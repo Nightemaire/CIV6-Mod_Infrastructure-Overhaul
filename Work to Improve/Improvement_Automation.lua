@@ -2,7 +2,7 @@
 -- Author: Nightemaire
 -- DateCreated: 6/20/2022 17:57:45
 --------------------------------------------------------------
--- TODO LIST:
+-- #region TODO LIST:
 -- - 
 --
 -- IDEA LIST:
@@ -11,14 +11,20 @@
 --	- Slash utilization on pillage
 --	- Slash utilization if improvement is removed
 --  - Make configuration exposed somewhere
---------------------------------------------------------------
+-- #endregion --------------------------------------------------
+
+-- ===========================================================================
+-- #region INCLUDES
+-- ===========================================================================
 print("IMPROVING IMPROVEMENTS!!! 16:16");
 
 include("SupportFunctions");
 include "AutoImprovements_Config.lua";
 
+-- #endregion
+
 -- ===========================================================================
--- STATIC DEFINITIONS
+-- #region STATIC DEFINITIONS
 -- ===========================================================================
 local GameSpeedType = GameConfiguration.GetGameSpeedType()
 local SpeedMultiplier = GameInfo.GameSpeeds[GameSpeedType].CostMultiplier;
@@ -66,10 +72,12 @@ for i = 0, NValids-1 do
 	ImprovementLUT[GameInfo.Resources[resourceType].Index] = GameInfo.Improvements[improvementType].Index;
 end
 
-g_iW, g_iH = Map.GetGridSize();
+local g_iW, g_iH = Map.GetGridSize();
+
+-- #endregion
 
 -- ===========================================================================
--- PARAMETERS
+-- #region PARAMETERS
 -- ===========================================================================
 
 local UtilizationWorked = Utilization_Bonus_If_Worked	-- FROM CONFIG
@@ -78,9 +86,10 @@ local Threshold = AutoImproveThreshold					-- FROM CONFIG
 
 UtilizationMax = Threshold * 1.5
 
+-- #endregion
 
 -- ===========================================================================
--- DEBUGGING
+-- #region DEBUGGING
 -- ===========================================================================
 local Debugging = false;			-- Because sometimes you just need to...
 local InstaImprove = true;			-- Supah speed
@@ -107,8 +116,10 @@ local pillagedPlots = {};
 
 print("Improvement Threshold = "..AutoImproveThreshold);
 
+-- #endregion
+
 -- ===========================================================================
--- PRIMARY EVENT HANDLER
+-- #region PRIMARY EVENT HANDLER
 -- ===========================================================================
 
 function OnPlayerTurnStarted(playerID:number, isFirstTime)
@@ -127,8 +138,10 @@ function OnPlayerTurnStarted(playerID:number, isFirstTime)
 end
 GameEvents.PlayerTurnStarted.Add(OnPlayerTurnStarted);
 
+-- #endregion
+
 -- ===========================================================================
--- STATE TABLE MANAGEMENT
+-- #region STATE TABLE MANAGEMENT
 -- ===========================================================================
 
 function GetTables(player : object)
@@ -229,8 +242,10 @@ function GetPlotUtilData(pPlot:object)
 	return nil
 end
 
+-- #endregion
+
 -- ===========================================================================
--- UTILIZATION MANIPULATION
+-- #region UTILIZATION MANIPULATION
 -- ===========================================================================
 
 function InitializePlot(pPlot : object)
@@ -386,8 +401,10 @@ function UpdatePlotGrowth(plot : object)
 	end
 end
 
+-- #endregion
+
 -- ===========================================================================
--- AUTO IMPROVEMENTS AND MAINTENANCE
+-- #region AUTO IMPROVEMENTS AND MAINTENANCE
 -- ===========================================================================
 
 function GetAutoImprovementType(pPlot)
@@ -442,6 +459,7 @@ function GetAutoImprovementType(pPlot)
 
 	return -1;
 end
+
 function PlayerKnowsImprovement(iPlayer, eImprovementType)
 	local player = Players[iPlayer]
 	if player ~= nil and notNilOrNegative(eImprovementType) then
@@ -480,10 +498,12 @@ function PlayerKnowsImprovement(iPlayer, eImprovementType)
 
 	return false;
 end
+
 function IsAquacultureAvailable(City)
 	local gov = City:GetAssignedGovernor()
 	return (gov:IsEstablished() and gov:HasPromotion(m_eAquaculturePromotion))
 end
+
 function TryMakeImprovement(pPlot, eImprovementType, cityHasAquaculture)
 	if notNilOrNegative(eImprovementType) and pPlot ~= nil then
 		local plotX = pPlot:GetX()
@@ -534,16 +554,19 @@ function TryMakeImprovement(pPlot, eImprovementType, cityHasAquaculture)
 	
 	return false;
 end
+
 function TryRepairPlot(plot : object)
 	printIfPlayer(playerID, "Repaired pillaged tile");
 	ImprovementBuilder.SetImprovementPillaged(pPlot, false)
 end
 
+-- #endregion
+
 -- ===========================================================================
--- EVENT HANDLERS
+-- #region EVENT HANDLERS
 -- ===========================================================================
 
--- City Events
+-- CITY EVENTS
 Events.CityInitialized.Add( function (cityOwner, cityID, iX, iY)
 		for k,plot in orderedPairs(Cities.GetCityInPlot(iX, iY):GetOwnedPlots()) do
 			InitializePlot(plot)
@@ -583,13 +606,12 @@ Events.CityWorkerChanged.Add( function(ownerID, cityID, iX, iY)
 		UpdatePlotGrowth(plot)
 end );
 
-
+-- PLOT CHANGES
 function OnPlotChangeEvent(iX:number, iY:number)
 	local plot = Map.GetPlot(iX, iY)
 	UpdatePlotGrowth(plot)
 end
-
--- Single plot recalc events
+-- Several events call the same function, so we can set them in a loop
 local PlotRecalcGrowthEvents = {
 	Events.PlotAppealChanged,
 	Events.PlotPropertyChanged,
@@ -597,141 +619,53 @@ local PlotRecalcGrowthEvents = {
 	Events.FeatureRemovedFromMap,
 	Events.FeatureAddedToMap
 }
-
 if #PlotRecalcGrowthEvents > 0 then
-	for i,event in orderedPairs(PlotRecalcGrowthEvents) do
+	for _,event in orderedPairs(PlotRecalcGrowthEvents) do
 		event.Add(OnPlotChangeEvent)
 	end
 end
 
---[[
-local CityRecalcGrowthEvents = {
-	Events.CityWorkerChanged,			-- playerID, cityID, x, y
-	Events.CityTileOwnershipChanged,	-- ownerID, cityID
-}
-
-local RecalcUtilEvents = {
-	Events.CityInitialized,				-- playerID, cityID, x, y
-	Events.CityPopulationChanged,		--playerID, cityID, cityPopulation
-}
-
-if #InitGrowthEvents > 0 then
-	for i,event in orderedPairs(InitGrowthEvents) do
-		--event.Add(InitializePlotUtilization)
-	end
-end
-
-if #RecalcUtilEvents > 0 then
-	for i,event in orderedPairs(RecalcUtilEvents) do
-		--event.Add(UpdatePlotUtilization)
-	end
-end
-
 -- IMPROVEMENTS
-
---Events.ImprovementChanged.Add(OnImprovementChanged);
-function OnImprovementAdded(iX, iY, eImprovement, playerID)
+Events.ImprovementAddedToMap.Add(function (iX, iY, eImprovement, playerID)
+	-- If an improvement is added by the player, the utilization should be set to at least the threshold
 	local plot = Map.GetPlot(iX, iY)
-	--local util = getUtilization(plot)
+	if playerID >= 0 then
+		local UtilData = GetPlotUtilData(plot)
+		if UtilData ~= nil then
+			if UtilData.Utilization < Threshold then
+				-- Only care if the utilization is below threshold
+				UtilData.Utilization = Threshold
+				SetPlotUtilData(plot, UtilData)
+			end
+		end
 
-	-- the utilization should be at least the threshold with an improvement
-	--setUtilization(plot, math.max(util, Threshold))
-end
-Events.ImprovementAddedToMap.Add(OnImprovementAdded);
+		-- Need to remove this plot index from the update tables
+		RemovePlotFromTables(playerID, plot:GetIndex())
+	end
+end );
 
--- Improvement Removed
-function OnImprovementRemoved(iX, iY, eImprovement, playerID)
+Events.ImprovementRemovedFromMap.Add(function (iX, iY, eImprovement, playerID)
 	-- halve the utilization so it doesn't re-improve immediately
-	--setUtilization(Map.GetPlot(iX, iY), Threshold/2)
-end
-Events.ImprovementRemovedFromMap.Add(OnImprovementRemoved);
-
-
--- City Focus Changed
-function OnCityFocusChanged(cityOwner, cityID)
-	local pPlayer = PlayerManager.GetPlayer(cityOwner)
-	local city = pPlayer:GetCities():FindID(cityID)
-
-	local favoredYields = {}
-	local disfavoredYields = {}
-
-	--for yield in GameInfo.YieldTypes do
-		--local isFavored = city:GetCitizens():IsFavoredYield(yield)
-		--local isDisfavored = city:GetCitizens():IsDisfavoredYield(yield)
---
-		--if isFavored then
-			--table.insert(favoredYields, yield)
-		--end
---
-		--if isDisfavored then
-			--table.insert(disfavoredYields, yield)
-		--end
-	--end
-end
---Events.CityFocusChanged.Add(OnCityFocusChanged);				-- (playerID, cityID)
-
--- Population Changed
-function OnCityPopChanged(cityOwner, cityID, ChangeAmount)
-	local city = CityManager.GetCity(cityOwner, getCity)
-	local data = GetCityData(city)
-	for k,plot in orderedPairs(city:GetOwnedPlots()) do
-		--UpdatePlotUtilization(plot, data)
-	end
-end
-GameEvents.OnCityPopulationChanged.Add(OnCityPopChanged);		-- (cityOwner, cityID, ChangeAmount)
-
--- Worker Changed
-function OnWorkerChanged(cityOwner, cityID, iX, iY)
-	--local pPlayer = PlayerManager.GetPlayer(cityOwner)
-	--local city = pPlayer:GetCities():FindID(cityID)
-
-	--for k,plot in orderedPairs(city:GetOwnedPlots()) do
 	local plot = Map.GetPlot(iX, iY)
-	CalculatePlotGrowth(plot:GetIndex())
-		--UpdatePlotUtilization(plot, CityData)
-	--end
-end
-Events.CityWorkerChanged.Add(OnWorkerChanged);					-- (owner, cityID, iX, iY)
 
--- Tile Ownership Changed
-function OnTileOwnershipChanged(cityOwner, cityID)
-	--CalculatePlotGrowth(plot:GetX(), plot:GetY())
-end
-Events.CityTileOwnershipChanged.Add(OnTileOwnershipChanged);	-- (owner, cityID)
+	if playerID >= 0 then
+		local UtilData = GetPlotUtilData(plot)
+		if UtilData ~= nil then
+			local newVal = UtilData.Utilization / 2
+			UtilData.Utilization = newVal
+			SetPlotUtilData(plot, UtilData)
+		end
 
--- City Removed
-function OnCityRemoved(cityOwner, cityID)
-	
-end
-Events.CityRemovedFromMap.Add(OnCityRemoved);					-- (playerID, cityID)
-
--- City Conquered
-function OnCityConquered(newOwner, oldOwner, newCityID, iX, iY)
-	local pPlayer = PlayerManager.GetPlayer(newOwner)
-	local city = pPlayer:GetCities():FindID(newCityID)
-
-	for k,plot in orderedPairs(city:GetOwnedPlots()) do
-		CalculatePlotGrowth(plot:GetIndex())
-		--UpdatePlotUtilization(plot, CityData)
+		-- And lastly update the plot so it can potentially improve again later
+		UpdatePlotGrowth(plot)
 	end
-end
---Events.CityConquered.Add(OnCityConquered);						--(newPlayerID,oldPlayerID,newCityID,x,y)
+end );
 
--- MISCELLANEOUS
-
--- Need to readjust route types to account for sub-type when a player era changes
-function OnPlayerEraChange(playerID:number, eraID)
-	
-end
-Events.PlayerEraChanged.Add(OnPlayerEraChange);
-
---]]
+-- #endregion
 
 -- ===========================================================================
--- UTILITY FUNCTIONS
+-- #region UTILITY FUNCTIONS
 -- ===========================================================================
-
--- CITY MANAGEMENT
 
 -- Find closest city of this tile
 function FindClosestCity(iStartX, iStartY, range)
@@ -755,6 +689,29 @@ function FindClosestCity(iStartX, iStartY, range)
     end
 
     return iShortestDistance, pCity;
+end
+
+function GetCityFavoredYields(city:object)
+
+	local favoredYields = {}
+	local disfavoredYields = {}
+
+	if city ~= nil then
+
+		for yield in GameInfo.YieldTypes do
+			local isFavored = city:GetCitizens():IsFavoredYield(yield)
+			local isDisfavored = city:GetCitizens():IsDisfavoredYield(yield)
+
+			if isFavored then
+				table.insert(favoredYields, yield)
+			end
+
+			if isDisfavored then
+				table.insert(disfavoredYields, yield)
+			end
+		end
+	end
+	return favoredYields, disfavoredYields
 end
 
 -- MISCELLANEOUS
@@ -795,7 +752,8 @@ function SpawnBarbOnPlot(plot : object)
 end
 
 --------------------------------------------
--- Plot Iterator, Author: whoward69; URL: https://forums.civfanatics.com/threads/border-and-area-plot-iterators.474634/
+-- #region Plot Iterator Functions
+-- Author: whoward69; URL: https://forums.civfanatics.com/threads/border-and-area-plot-iterators.474634/
     -- convert funcs odd-r offset to axial. URL: http://www.redblobgames.com/grids/hexagons/
     -- here grid == offset; hex == axial
     function ToHexFromGrid(grid)
@@ -934,9 +892,8 @@ end
             return success and pAreaPlot or nil
         end
     end
--- End of iterator code --------------------
-
-
+-- #endregion End of iterator code --------------------
+-- #endregion 
 
 
 print("IMPROVEMENTS IMPROVED.");
