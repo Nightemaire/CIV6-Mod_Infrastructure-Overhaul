@@ -6,7 +6,7 @@
 print("ENGINEERING RAILWAYS!!! 18:53")
 
 -- ===========================================================================
--- Constants and Definitions
+-- #region Constants and Definitions
 -- ===========================================================================
 
 local iRailroad = GameInfo.Routes["ROUTE_RAILROAD"].Index
@@ -50,8 +50,10 @@ local RR_ResourceCost = RsrcMultiplier
 
 print("Resource Multiplier = "..RsrcMultiplier)
 
+-- #endregion
+
 -- ===========================================================================
--- Event Handling
+-- #region Event Handling
 -- ===========================================================================
 
 function OnUnitAdded(playerID : number, unitID : number)
@@ -214,8 +216,10 @@ Events.LoadComplete.Add(function ()
 	GameEvents.PlayerTurnStarted.Add(OnPlayerTurnStart)
 end)
 
+-- #endregion
+
 -- ===========================================================================
--- Utitity functions: Railroads
+-- #region Utitity functions: Railroads
 -- ===========================================================================
 
 function getIndustrialZoneTile(city)
@@ -455,8 +459,10 @@ function StartTranscontinentalRailroad(StartPlot, EndPlot, playerID)
 	end
 end
 
+-- #endregion
+
 -- ===========================================================================
--- Utitity functions: Routebuilding
+-- #region Utitity functions: Routebuilding
 -- ===========================================================================
 
 -- ===========================================================================
@@ -806,8 +812,10 @@ function CreateRouteFromTo(fromPlot : object, toPlot : object)
 	end
 end
 
+-- #endregion
+
 -- ===========================================================================
--- Utitity functions: Miscellaneous
+-- #region Utitity functions: Miscellaneous
 -- ===========================================================================
 
 function notNilOrNegative(val)
@@ -845,6 +853,6 @@ function printArgTable(argTable)
 	end
 end
 
-
+-- #endregion
 
 print("RAILWAYS ENGINEERED.");
