@@ -6,10 +6,10 @@
 print("ENHANCING ROUTES!! 18:36");
 
 include "Enhanced_Routes_Config.lua";
-include "SupportFunctions";
+include "SupportFunctions.lua";
 
 -- ===========================================================================
--- Configuration
+-- #region Configuration
 -- ===========================================================================
 
 local Connect_Improvements = ER_Config.Connect_Improvements
@@ -34,8 +34,10 @@ local i_IndustrialRoad = GameInfo.Routes["ROUTE_INDUSTRIAL_ROAD"].Index;
 local i_ModernRoad = GameInfo.Routes["ROUTE_MODERN_ROAD"].Index;
 local i_Railroad = GameInfo.Routes["ROUTE_RAILROAD"].Index;
 
+-- #endregion
+
 -- ===========================================================================
--- Event Handling
+-- #region Event Handling
 -- ===========================================================================
 
 -- Makes sure that when the trader moves, the route becomes a primary route
@@ -220,8 +222,10 @@ Events.LoadComplete.Add(
 	end
 )
 
+-- #endregion
+
 -- ===========================================================================
--- Utitity functions: Routebuilding
+-- #region Utitity functions: Routebuilding
 -- ===========================================================================
 
 -- ===========================================================================
@@ -751,9 +755,10 @@ function AdjustRoadsBySubType(city)
 	end
 end
 
+-- #endregion
 
 -- ===========================================================================
--- Utitity functions: City Management
+-- #region Utitity functions: City Management
 -- ===========================================================================
 
 -- Utitity function: find any city in a range
@@ -848,9 +853,10 @@ function getCity(playerID, cityID)
 	return Players[playerID]:GetCities():FindID(cityID);
 end
 
+-- #endregion
 
 -- ===========================================================================
--- Utitity functions: Miscellaneous
+-- #region Utitity functions: Miscellaneous
 -- ===========================================================================
 
 function notNilOrNegative(val)
@@ -892,10 +898,10 @@ function getPlayer(playerID)
 	return PlayerManager.GetPlayer(playerID)
 end
 
---------------------------------------------
+--
 -- Plot Iterator, Author: whoward69; URL: https://forums.civfanatics.com/threads/border-and-area-plot-iterators.474634/
     -- convert funcs odd-r offset to axial. URL: http://www.redblobgames.com/grids/hexagons/
-    -- here grid == offset; hex == axial
+    -- here grid == offset, hex == axial
     function ToHexFromGrid(grid)
         local hex = {
             x = grid.x - (grid.y - (grid.y % 2)) / 2;
@@ -1032,7 +1038,7 @@ end
             return success and pAreaPlot or nil
         end
     end
--- End of iterator code --------------------
+-- #endregion --------------------
 
 
 --print("Config dump:")

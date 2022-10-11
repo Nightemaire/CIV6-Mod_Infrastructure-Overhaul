@@ -8,6 +8,7 @@ print("ENGINEERING RAILWAYS!!! 18:53")
 -- ===========================================================================
 -- #region Constants and Definitions
 -- ===========================================================================
+include("SupportFunctions.lua");
 
 local iRailroad = GameInfo.Routes["ROUTE_RAILROAD"].Index
 local iTunnel = GameInfo.Improvements["IMPROVEMENT_MOUNTAIN_TUNNEL"].Index
@@ -152,20 +153,31 @@ function OnBuildingConstructed(playerID, cityID, buildingID, plotID, bOriginalCo
 				--player:GetUnits():Create(iRailBuilder, plot:GetX(), plot:GetY());
 			--end
 		elseif (buildingID == iTCStation) then
+			local actPlot = Map.GetPlotByIndex(plotID)
+			local areaID = actPlot:GetArea()
+			MapUtilities.ObtainLandmassBoundaries(areaID)
 			local player = Players[playerID]
 
-			local actPlot = Map.GetPlotByIndex(plotID)
 			local TC_RR_Start = player:GetProperty("TCRR_START")
 
 			CreateRailroadAt(actPlot)
 
 			if TC_RR_Start == nil then
 				player:SetProperty("TCRR_START", actPlot:GetIndex())
+				local disconnectedCities = FindDisconnectedCities(areaID, playerID)
 			else
 				StartTranscontinentalRailroad(Map.GetPlotByIndex(TC_RR_Start), actPlot, playerID)
 			end
 		end
 	end
+end
+
+function FindDisconnectedCities(areaID, playerID)
+	local player = Players[playerID]
+	local cities = {}
+	
+
+	return cities
 end
 
 function OnPlayerTurnStart(playerID, isFirstTime)
@@ -255,7 +267,7 @@ function UpgradeCityToRailroads(city)
 	
 	print("There are "..plotCount.." plots belonging to the city of "..city:GetName());
 
-	for k,plot in pairs(Plots) do
+	for k,plot in ipairs(Plots) do
 		local routeType = plot:GetRouteType();
 		local plotX = plot:GetX();
 		local plotY = plot:GetY();
@@ -335,83 +347,81 @@ function BuildTranscontinentalSection(data, playerID)
 				local ironAmount = player:GetResources():GetResourceAmount("RESOURCE_IRON")
 				local coalAmount = player:GetResources():GetResourceAmount("RESOURCE_COAL")
 
-				if ironAmount >= RR_ResourceCost * 2 and coalAmount >= RR_ResourceCost * 2 then
-					if remaining == 1 then
-						-- One tile remains in the middle
-						if ironAmount >= RR_ResourceCost and coalAmount >= RR_ResourceCost then
-							local thisPlot = Map.GetPlotByIndex(table.remove(route))
+				if remaining == 1 then
+					-- One tile remains in the middle
+					if ironAmount >= RR_ResourceCost and coalAmount >= RR_ResourceCost then
+						local thisPlot = Map.GetPlotByIndex(table.remove(route))
 
-							if data.tunnellingF or data.tunnellingR then
-								if data.tunnellingF and data.tunnellingR then
-									-- in the same mountain chain, so we're done
-								else
-									-- Only one direction is tunnelling, so force an exit tunnel to be built
-									if data.tunnellingF then
-										buildChunk(thisPlot, nil, false, playerID)
-									else
-										buildChunk(thisPlot, nil, false, playerID)
-									end
-								end
+						if data.tunnellingF or data.tunnellingR then
+							if data.tunnellingF and data.tunnellingR then
+								-- in the same mountain chain, so we're done
 							else
-								-- Dont need to worry about tunnelling
-								buildChunk(thisPlot, nil, false, playerID)
+								-- Only one direction is tunnelling, so force an exit tunnel to be built
+								if data.tunnellingF then
+									buildChunk(thisPlot, nil, false, playerID)
+								else
+									buildChunk(thisPlot, nil, false, playerID)
+								end
 							end
-
-							player:GetResources():ChangeResourceAmount(iIron, -RR_ResourceCost)
-							player:GetResources():ChangeResourceAmount(iCoal, -RR_ResourceCost)
-							
-							data.step = data.step + 1
-							building = false
 						else
-							-- Notify user that they're almost done but out of resources
-							local plot = Map.GetPlotByIndex(data.Route[1])
-							SendLowResourceNotification(playerID, plot:GetX(), plot:GetY())
-						end
-					elseif remaining == 2 then
-						if ironAmount >= RR_ResourceCost*2 and coalAmount >= RR_ResourceCost*2 then
-							-- Two tiles left, need to force close any tunnels
-							local thisPlot = Map.GetPlotByIndex(table.remove(route))
+							-- Dont need to worry about tunnelling
 							buildChunk(thisPlot, nil, false, playerID)
-
-							thisPlot = Map.GetPlotByIndex(table.remove(route, 1))
-							buildChunk(thisPlot, nil, false, playerID)
-
-							player:GetResources():ChangeResourceAmount(iIron, -RR_ResourceCost*2)
-							player:GetResources():ChangeResourceAmount(iCoal, -RR_ResourceCost*2)
-
-							data.step = data.step + 1
-							-- No matter what, we're done building here
-							building = false
-						else
-							-- Notify user that they're almost done but out of resources
-							local plot = Map.GetPlotByIndex(data.Route[1])
-							SendLowResourceNotification(playerID, plot:GetX(), plot:GetY())
 						end
+
+						player:GetResources():ChangeResourceAmount(iIron, -RR_ResourceCost)
+						player:GetResources():ChangeResourceAmount(iCoal, -RR_ResourceCost)
+						
+						data.step = data.step + 1
+						building = false
 					else
-						if ironAmount >= RR_ResourceCost*2 and coalAmount >= RR_ResourceCost*2 then
-							-- Each direction still needs to build
-							local thisPlot = Map.GetPlotByIndex(table.remove(route))
-							data.tunnellingF = buildChunk(thisPlot, Map.GetPlotByIndex(data.prevPlotF), data.tunnellingF, playerID)
-							data.prevPlotF = thisPlot:GetIndex()
-
-							thisPlot = Map.GetPlotByIndex(table.remove(route, 1))
-							data.tunnellingR = buildChunk(thisPlot, Map.GetPlotByIndex(data.prevPlotR), data.tunnellingR, playerID)
-							data.prevPlotR = thisPlot:GetIndex()
-							
-							player:GetResources():ChangeResourceAmount(iIron, -RR_ResourceCost*2)
-							player:GetResources():ChangeResourceAmount(iCoal, -RR_ResourceCost*2)
-
-							data.step = data.step + 1
-						else
-							-- Notify user that they're out of resources
-							local plot = Map.GetPlotByIndex(data.Route[1])
-							SendLowResourceNotification(playerID, plot:GetX(), plot:GetY())
-						end
+						-- Notify user that they're almost done but out of resources
+						local plot = Map.GetPlotByIndex(route[1])
+						SendLowResourceNotification(playerID, plot:GetX(), plot:GetY())
 					end
+				elseif remaining == 2 then
+					if ironAmount >= RR_ResourceCost*2 and coalAmount >= RR_ResourceCost*2 then
+						-- Two tiles left, need to force close any tunnels
+						local thisPlot = Map.GetPlotByIndex(table.remove(route))
+						buildChunk(thisPlot, nil, false, playerID)
 
-					data.progress = (data.step/data.TotalLength)*100
-					data.Route = route
+						thisPlot = Map.GetPlotByIndex(table.remove(route, 1))
+						buildChunk(thisPlot, nil, false, playerID)
+
+						player:GetResources():ChangeResourceAmount(iIron, -RR_ResourceCost*2)
+						player:GetResources():ChangeResourceAmount(iCoal, -RR_ResourceCost*2)
+
+						data.step = data.step + 1
+						-- No matter what, we're done building here
+						building = false
+					else
+						-- Notify user that they're almost done but out of resources
+						local plot = Map.GetPlotByIndex(route[1])
+						SendLowResourceNotification(playerID, plot:GetX(), plot:GetY())
+					end
+				else
+					if ironAmount >= RR_ResourceCost*2 and coalAmount >= RR_ResourceCost*2 then
+						-- Each direction still needs to build
+						local thisPlot = Map.GetPlotByIndex(table.remove(route))
+						data.tunnellingF = buildChunk(thisPlot, Map.GetPlotByIndex(data.prevPlotF), data.tunnellingF, playerID)
+						data.prevPlotF = thisPlot:GetIndex()
+
+						thisPlot = Map.GetPlotByIndex(table.remove(route, 1))
+						data.tunnellingR = buildChunk(thisPlot, Map.GetPlotByIndex(data.prevPlotR), data.tunnellingR, playerID)
+						data.prevPlotR = thisPlot:GetIndex()
+						
+						player:GetResources():ChangeResourceAmount(iIron, -RR_ResourceCost*2)
+						player:GetResources():ChangeResourceAmount(iCoal, -RR_ResourceCost*2)
+
+						data.step = data.step + 1
+					else
+						-- Notify user that they're out of resources
+						local plot = Map.GetPlotByIndex(route[1])
+						SendLowResourceNotification(playerID, plot:GetX(), plot:GetY())
+					end
 				end
+
+				data.progress = (data.step/data.TotalLength)*100
+				data.Route = route
 
 				if not(building) then break; end
 			end
@@ -453,7 +463,7 @@ function StartTranscontinentalRailroad(StartPlot, EndPlot, playerID)
 		NotificationManager.SendNotification(playerID, type, msgString, sumString, StartPlot:GetX(), StartPlot:GetY());
 
 		-- Set Owner of all tiles to the player
-		for _,tile in pairs(route) do
+		for _,tile in ipairs(route) do
 			Map.GetPlotByIndex(tile):SetOwner(playerID)			
 		end
 	end
@@ -647,11 +657,11 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 		end
 
 		-- Returns the plot in the OpenList with the lowest F or G value
-		local function GetNextPlot(preferredDir)
+		local function GetNextPlot()
 			local Fmin = 99999
 			local Gmin = 99999
 			local nextEntry = nil
-			for k,entry in pairs(OpenList) do
+			for k,entry in orderedPairs(OpenList) do
 				--print("Evaluating open list item "..k)
 				--if entry.F < Fmin and entry.G > Gmax then
 				--[[

@@ -18,7 +18,7 @@
 -- ===========================================================================
 print("IMPROVING IMPROVEMENTS!!! 16:16");
 
-include("SupportFunctions");
+include("SupportFunctions.lua");
 include "AutoImprovements_Config.lua";
 
 -- #endregion
@@ -619,14 +619,6 @@ end
 
 -- CITY EVENTS
 
---[[
-Events.CityInitialized.Add( function (cityOwner, cityID, iX, iY)
-		for k,plot in orderedPairs(Cities.GetCityInPlot(iX, iY):GetOwnedPlots()) do
-			InitializePlot(plot)
-		end
-end );
-]]
-
 Events.CityTileOwnershipChanged.Add( function (ownerID, cityID, iX, iY)
 	--print("City Tile Ownership Changed")
 	UpdatePlot(Map.GetPlot(iX, iY))
@@ -647,6 +639,33 @@ Events.CityWorkerChanged.Add( function(ownerID, cityID, iX, iY)
 	UpdatePlot(plot)
 end );
 
+-- DISTRICT UPDATES
+Events.DistrictAddedToMap.Add(function (playerID, districtID, cityID, X, Y, districtIndex, percentComplete)
+	print("District Added")
+	
+end)
+
+Events.DistrictRemovedFromMap.Add(function (...)
+	print("District Removed")
+	tprint(arg)
+end)
+
+Events.BuildingAddedToMap.Add(function (X, Y, buildingID, playerID, misc2, misc3)
+	-- Mostly interested in checking for a wonder here to remove the tile
+
+end)
+
+Events.NationalParkAdded.Add(function (...)
+	print("National Park Added!")
+	tprint(arg)
+end)
+
+Events.NationalParkRemoved.Add(function (...)
+	print("National Park Removed!")
+	tprint(arg)
+end)
+
+
 -- PLOT CHANGES
 function OnPlotChangeEvent(iX:number, iY:number)
 	--print("Plot Changed!")
@@ -658,7 +677,9 @@ local PlotRecalcGrowthEvents = {
 	--Events.PlotPropertyChanged,
 	Events.PlotYieldChanged,
 	Events.FeatureRemovedFromMap,
-	Events.FeatureAddedToMap
+	Events.FeatureAddedToMap,
+	Events.ResourceAddedToMap,
+	Events.ResourceRemovedFromMap
 }
 if #PlotRecalcGrowthEvents > 0 then
 	for _,event in orderedPairs(PlotRecalcGrowthEvents) do
@@ -671,7 +692,7 @@ Events.ImprovementAddedToMap.Add(function (iX, iY, eImprovement, playerID)
 	print("Improvement Added")
 	-- If an improvement is added by the player, the utilization should be set to at least the threshold
 	local plot = Map.GetPlot(iX, iY)
-	if notNilOrNegative(playerID) then
+	if notNilOrNegative(playerID) and plot ~= nil then
 		local UtilData = GetPlotUtilData(plot)
 
 		if UtilData.Utilization < Threshold then
@@ -704,6 +725,22 @@ Events.ImprovementRemovedFromMap.Add(function (iX, iY, eImprovement, playerID)
 		end
 	end
 end );
+
+-- PLAYER DEFEATS
+Events.PlayerDestroyed.Add(function (...)
+	print("Player Destoryed")
+	tprint(arg)
+end)
+
+Events.PlayerRevived.Add(function (...)
+	print("PLayer Revived")
+	tprint(arg)
+end)
+
+-- OTHER
+Events.WMDDetonated.Add(function (X, Y, playerID, WMDIndex)
+	
+end)
 
 -- #endregion
 
