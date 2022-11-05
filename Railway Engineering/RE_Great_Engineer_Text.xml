@@ -11,7 +11,7 @@
 		
 		<Row Tag="LOC_GREATPERSON_THEODORE_JUDAH_ACTIVE">
 			<Text>
-				Instantly builds a Railyard without requiring a Factory, and all Railyards provide an additional +1 [ICON_Production] Production. The first activation sets the starting point for the Transcontinental Railroad, and the second activation sets the end point. Once both charges are used, the land will be claimed and Railroads will be built to connect the two tiles.
+				Instantly builds a Railyard without requiring a Factory, and all Railyards provide an additional +1 [ICON_Production] Production. Each activation also builds a Transcontinental Railstation in the city center if one does not already exist, so activate wisely to make the best use of the Transcontinental Railroad!
 			</Text>
 		</Row>
 

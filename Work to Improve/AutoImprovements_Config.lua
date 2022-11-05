@@ -62,6 +62,6 @@ local SpeedMultiplier = GameInfo.GameSpeeds[GameSpeedType].CostMultiplier
 AutoImproveThreshold = Threshold_Scalar * SpeedMultiplier
 
 -- Utilization works with appeal, which is low order of magnitude, so we scale that to work with the threshold
-UtilizationScalar = 10	
+UtilizationScalar = 10
 
 --print("Auto-Improvements config loaded")

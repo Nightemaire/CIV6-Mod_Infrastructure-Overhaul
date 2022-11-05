@@ -10,7 +10,7 @@
 		</Row>
 
 		<Row Tag="LOC_UNIT_RAILWAY_ENGINEER_DESCRIPTION" Language="en_US">
-			<Text>The Railway Engineer costs iron to produce, coal to maintain, and is capable of building 10 tiles worth of railroad. Railroads are created as the engineer moves. Requires a Railyard in the city. Railroads will not be constructed if you have 0 Coal in your stockpile, or if the Engineer does not move adjacent to an existing railroad.</Text>
+			<Text>The Railway Engineer costs iron to produce, coal to maintain, and is capable of building 10 tiles worth of railroad. Railroads are created as the engineer moves. Requires a Railyard in the city. Railroads will not be constructed if you have 0 Coal in your stockpile, or if the Engineer does not move adjacent to an existing railroad. The engineer is also capablve of building tunnels.</Text>
 		</Row>
 
 		<!-- BUILDINGS -->
@@ -27,7 +27,7 @@
 		</Row>
 
 		<Row Tag="LOC_BUILDING_TCRR_STATION_DESCRIPTION" Language="en_US">
-			<Text>This passenger rail station is the endpoint for a continent spanning engineering marvel. It provides a boost to Tourism [ICON_Tourism] in each city where it's built.</Text>
+			<Text>This passenger rail station is the endpoint for a continent spanning engineering marvel. It provides a boost to Tourism [ICON_Tourism] in each city where it's built, but only two can be built in your empire! Place these buildings carefully, as once they're built, construction will begin on the transcontinental railroad between the two stations. The railroad will not be constructed if there is no contiguous route between the stations.</Text>
 		</Row>
 
 	</LocalizedText>
