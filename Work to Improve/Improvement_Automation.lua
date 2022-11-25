@@ -80,11 +80,11 @@ local g_iW, g_iH = Map.GetGridSize();
 -- #region PARAMETERS
 -- ===========================================================================
 
-local UtilizationWorked = Utilization_Bonus_If_Worked	-- FROM CONFIG
+local DevelopmentWorked = Development_Bonus_If_Worked	-- FROM CONFIG
 local AllowAppealReduction = Allow_Appeal_Reduction		-- FROM CONFIG
 local Threshold = AutoImproveThreshold					-- FROM CONFIG
 
-UtilizationMax = Threshold * 1.5
+DevelopmentMax = Threshold * 1.5
 
 -- #endregion
 
@@ -98,7 +98,7 @@ local BurnMePlease = true;			-- Will spawn barbarians on recent improvements to 
 if Debugging then
 	print("Debugging flag is enabled")
 	if InstaImprove then
-		UtilizationScalar = UtilizationScalar*10
+		DevelopmentScalar = DevelopmentScalar*10
 		print(" - Tiles will improve extra fast")
 	end
 	if BurnMePlease then
@@ -110,9 +110,6 @@ local BarbSpawnDelay = 1;
 local BarbSpawnTurn = 0;
 local Barbing = false;
 local BarbSpawnPlot = nil;
-
--- LOCAL TABLES
-local pillagedPlots = {};
 
 print("Improvement Threshold = "..AutoImproveThreshold);
 
@@ -166,7 +163,7 @@ function SetTables(player, TurnTable, PlotTable)
 end
 
 function RemovePlotFromTables(playerID : number, plotID : number)
-	print("Removing Plot")
+	printIfPlayer(playerID, "Removing Plot: "..plotID)
 	if notNilOrNegative(plotID) and notNilOrNegative(playerID) then
 		local player = Players[playerID]
 		local TurnTable, PlotTable = GetTables(player)
@@ -184,7 +181,7 @@ function RemovePlotFromTables(playerID : number, plotID : number)
 end
 
 function UpdateImprovementTables(playerID:number, plotID:number, turn:number)
-	print("Updating Tables")
+	printIfPlayer(playerID, "Updating Tables")
 	if notNilOrNegative(playerID) and notNilOrNegative(plotID) and notNilOrNegative(turn) then
 		if turn == nil then print("Turn was nil, wtf"); end
 		local player = Players[playerID]
@@ -213,7 +210,7 @@ function UpdateImprovementTables(playerID:number, plotID:number, turn:number)
 end
 
 function ChangePlotOwner(plotID, newOwnerID, oldOwnerID)
-	print("Changing Owner")
+	printIfPlayer(oldOwnerID, "Changing Owner from "..newOwnerID.." to "..oldOwnerID)
 	if not(plotID == nil or newOwnerID == nil or oldOwnerID == nil) then
 		local newOwner = Players[newOwnerID]
 		local oldOwner = Players[oldOwnerID]
@@ -235,54 +232,54 @@ function ChangePlotOwner(plotID, newOwnerID, oldOwnerID)
 
 		-- Update the current owner
 		local plot = Map.GetPlotByIndex(plotID)
-		local UtilData = GetPlotUtilData(plot)
-		UtilData.Owner = newOwner
-		SetPlotUtilData(plot, UtilData)
+		local DevData = GetPlotDevData(plot)
+		DevData.Owner = newOwner
+		SetPlotDevData(plot, DevData)
 	end
 end
 
 function RemoveCityFromPlayer(playerID : number, city : object)
-	print("Removing City")
+	printIfPlayer(playerID, "Removing City")
 	for k,plot in orderedPairs(city:GetOwnedPlots()) do
 		RemovePlotFromTables(playerID, plot:GetIndex())
 	end
 end
 
-function InitializePlotUtilData(pPlot : object)
-	--print("Initializing Util Data")
+function InitializePlotDevData(pPlot : object)
+	--print("Initializing Dev Data")
 	if pPlot ~= nil then
 		--print("Initializing plot: "..pPlot:GetIndex())
 		-- Initialize the table		
 		local growth = CalculatePlotGrowth(pPlot)
 
-		newUtilData = {
-			Utilization = 0,
+		newDevData = {
+			Development = 0,
 			Growth 		= growth,
 			LastUpdate 	= Game.GetCurrentGameTurn(),
 			ImprovesOn 	= -1,
 			Owner		= pPlot:GetOwner()
 		};
 
-		newUtilData = CalculateImprovementTurn(newUtilData)
+		newDevData = CalculateImprovementTurn(newDevData)
 		
-		SetPlotUtilData(pPlot, newUtilData)
+		SetPlotDevData(pPlot, newDevData)
 
-		return newUtilData
+		return newDevData
 	end
 end
 
-function SetPlotUtilData(pPlot:object, newData:table)
-	--print("Setting Util Data")
+function SetPlotDevData(pPlot:object, newData:table)
+	--print("Setting Dev Data")
 	if pPlot ~= nil then
-		pPlot:SetProperty("UTILIZATION_DATA", newData)
+		pPlot:SetProperty("DEVELOPMENT_DATA", newData)
 	end
 end
 
-function GetPlotUtilData(pPlot:object)
-	--print("Getting Util Data")
+function GetPlotDevData(pPlot:object)
+	--print("Getting Dev Data")
 	if pPlot ~= nil then
-		local data = pPlot:GetProperty("UTILIZATION_DATA")
-		if data == nil then data = InitializePlotUtilData(pPlot); end
+		local data = pPlot:GetProperty("DEVELOPMENT_DATA")
+		if data == nil then data = InitializePlotDevData(pPlot); end
 		return data
 	end
 	return nil
@@ -291,24 +288,28 @@ end
 -- #endregion
 
 -- ===========================================================================
--- #region UTILIZATION MANIPULATION
+-- #region DEVELOPMENT MANIPULATION
 -- ===========================================================================
 
 function UpdatePlot(pPlot : object)
-	print("Updating Plot "..pPlot:GetIndex())
 	if pPlot ~= nil then
-		local UtilData = GetPlotUtilData(pPlot)
-		UtilData = CalculateImprovementTurn(UtilData, CalculatePlotGrowth(pPlot))
-		SetPlotUtilData(pPlot, UtilData)
+		printIfPlayer(pPlot:GetOwner(), "Updating Plot "..pPlot:GetIndex())
+		local DevData = GetPlotDevData(pPlot)
+		DevData = CalculateImprovementTurn(DevData, CalculatePlotGrowth(pPlot))
+		SetPlotDevData(pPlot, DevData)
 
-		local prevOwner = UtilData.Owner
+		local prevOwner = DevData.Owner
 		local currOwner = pPlot:GetOwner()
 		if prevOwner ~= currOwner then ChangePlotOwner(pPlot:GetIndex(), currOwner, prevOwner); end
 
 		-- We can update the tables for the owning player as well
 		if notNilOrNegative(currOwner) then
-			UpdateImprovementTables(currOwner, pPlot:GetIndex(), UtilData.ImprovesOn)
+			UpdateImprovementTables(currOwner, pPlot:GetIndex(), DevData.ImprovesOn)
+		else
+			-- no owner, what should we do?
 		end
+	else
+		print("ERROR!!! Tried to update a plot, but it was nil!")
 	end
 end
 
@@ -321,8 +322,7 @@ function GetTilesToImprove(playerID:number, turn:number)
 		if TurnTable[turn] ~= nil then
 			local PlotTable = player:GetProperty("AUTO_IMPROVE_PLOT_TABLE")
 			-- Remove the entry for this turn
-			local TurnEntry = TurnTable[turn]
-			table.remove(TurnTable, turn)
+			local TurnEntry = table.remove(TurnTable, turn)
 			if TurnEntry ~= nil then
 				for k,_ in pairs(TurnEntry) do
 					table.insert(plots, Map.GetPlotByIndex(k))
@@ -403,26 +403,26 @@ function CalculatePlotGrowth(plot : object)
 		end
 						
 		-- Add to the growth if the tile is being worked
-		if workerCount > 0 then growth = growth + UtilizationWorked; end
+		if workerCount > 0 then growth = growth + DevelopmentWorked; end
 
 		-- Scale the growth so it is compatible with utilization
-		return growth * UtilizationScalar
+		return growth * DevelopmentScalar
 	end
 
 	return nil
 end
 
-function CalculateImprovementTurn(UtilData, newGrowth)
+function CalculateImprovementTurn(DevData, newGrowth)
 	local currentTurn = Game.GetCurrentGameTurn()
-	local growth = UtilData.Growth
+	local growth = DevData.Growth
 
-	-- Check to see if the Utilization value needs an update with the old growth value
+	-- Check to see if the Development value needs an update with the old growth value
 	-- before checking to see if theres a change in growth
-	if currentTurn ~= UtilData.LastUpdate then
-		local currentUtil = UtilData.Utilization;
-		local timeSinceLastUpdate = currentTurn - UtilData.LastUpdate;
-		UtilData.Utilization = currentUtil + (timeSinceLastUpdate * growth);
-		UtilData.LastUpdate = currentTurn;
+	if currentTurn ~= DevData.LastUpdate then
+		local currentDev = DevData.Development;
+		local timeSinceLastUpdate = currentTurn - DevData.LastUpdate;
+		DevData.Development = currentDev + (timeSinceLastUpdate * growth);
+		DevData.LastUpdate = currentTurn;
 	end
 
 	-- if the arg newGrowth is nil we just use the current growth
@@ -433,17 +433,17 @@ function CalculateImprovementTurn(UtilData, newGrowth)
 		ImprovementTurn = math.huge
 	else
 		-- Get the difference between the improvement threshold and the current utilization
-		local diff = Threshold - UtilData.Utilization
+		local diff = Threshold - DevData.Development
 		-- Number of turns is the diff divided by the growth rounded up
 		local turns = math.ceil(diff / growth)
 		-- And so the expected improvement turn is the number of turns plus the current turn
 		ImprovementTurn = currentTurn + turns
 	end
 
-	UtilData.ImprovesOn = ImprovementTurn
-	UtilData.Growth = growth
+	DevData.ImprovesOn = ImprovementTurn
+	DevData.Growth = growth
 
-	return UtilData
+	return DevData
 end
 
 -- #endregion
@@ -614,7 +614,7 @@ end
 -- #endregion
 
 -- ===========================================================================
--- #region EVENT HANDLERS
+-- #region SECONDARY EVENT HANDLERS
 -- ===========================================================================
 
 -- CITY EVENTS
@@ -640,29 +640,35 @@ Events.CityWorkerChanged.Add( function(ownerID, cityID, iX, iY)
 end );
 
 -- DISTRICT UPDATES
-Events.DistrictAddedToMap.Add(function (playerID, districtID, cityID, X, Y, districtIndex, percentComplete)
+function OnDistrictAdded (playerID, districtID, cityID, X, Y, districtIndex, percentComplete)
 	print("District Added")
-	
-end)
+	RemovePlotFromTables(playerID, Map.GetPlot(X, Y):GetIndex())
+end
 
-Events.DistrictRemovedFromMap.Add(function (...)
+Events.DistrictRemovedFromMap.Add(function (playerID, districtID, cityID, X, Y, districtIndex)
 	print("District Removed")
-	tprint(arg)
+	--tprint(arg)
+	UpdatePlot(playerID, Map.GetPlot(X, Y):GetIndex())
 end)
 
-Events.BuildingAddedToMap.Add(function (X, Y, buildingID, playerID, misc2, misc3)
+Events.BuildingAddedToMap.Add(function (X, Y, buildingID, playerID, cityID, percentComplete, isPillaged)
 	-- Mostly interested in checking for a wonder here to remove the tile
-
+	--print("Building Added!")
+	RemovePlotFromTables(playerID, Map.GetPlot(X, Y):GetIndex())
+	--tprint(arg)
 end)
 
-Events.NationalParkAdded.Add(function (...)
+function OnNationalParkAdded(playerID, X, Y)
 	print("National Park Added!")
-	tprint(arg)
-end)
+	-- Provided tile is the bottom of the diamond, so the coordinates should be explicit
+	for _, plotID in ipairs(Game.GetNationalParks():GetAtLocation(X, Y)) do
+		RemovePlotFromTables(playerID, Map.GetPlotByIndex(plotID))
+	end
+end
 
 Events.NationalParkRemoved.Add(function (...)
 	print("National Park Removed!")
-	tprint(arg)
+	--tprint(arg)
 end)
 
 
@@ -681,30 +687,25 @@ local PlotRecalcGrowthEvents = {
 	Events.ResourceAddedToMap,
 	Events.ResourceRemovedFromMap
 }
-if #PlotRecalcGrowthEvents > 0 then
-	for _,event in orderedPairs(PlotRecalcGrowthEvents) do
-		event.Add(OnPlotChangeEvent)
-	end
-end
 
 -- IMPROVEMENTS
-Events.ImprovementAddedToMap.Add(function (iX, iY, eImprovement, playerID)
+function OnImprovementAdded(iX, iY, eImprovement, playerID)
 	print("Improvement Added")
 	-- If an improvement is added by the player, the utilization should be set to at least the threshold
 	local plot = Map.GetPlot(iX, iY)
 	if notNilOrNegative(playerID) and plot ~= nil then
-		local UtilData = GetPlotUtilData(plot)
+		local DevData = GetPlotDevData(plot)
 
-		if UtilData.Utilization < Threshold then
+		if DevData.Development < Threshold then
 			-- Only care if the utilization is below threshold
-			UtilData.Utilization = Threshold
-			SetPlotUtilData(plot, UtilData)
+			DevData.Development = Threshold
+			SetPlotDevData(plot, DevData)
 		end
 
 		-- Need to remove this plot index from the update tables
 		RemovePlotFromTables(playerID, plot:GetIndex())
 	end
-end );
+end
 
 Events.ImprovementRemovedFromMap.Add(function (iX, iY, eImprovement, playerID)
 	print("Improvement Removed")
@@ -712,15 +713,15 @@ Events.ImprovementRemovedFromMap.Add(function (iX, iY, eImprovement, playerID)
 	local plot = Map.GetPlot(iX, iY)
 
 	if notNilOrNegative(playerID) then
-		local UtilData = GetPlotUtilData(plot)
-		if UtilData ~= nil then
+		local DevData = GetPlotDevData(plot)
+		if DevData ~= nil then
 			if notNilOrNegative(plot:GetOwner()) then
-				local newVal = UtilData.Utilization / 2
-				UtilData.Utilization = newVal
-				SetPlotUtilData(plot, UtilData)
+				local newVal = DevData.Development / 2
+				DevData.Development = newVal
+				SetPlotDevData(plot, DevData)
 				UpdatePlot(plot)
 			else
-				RemovePlotFromTables(UtilData.Owner, plot:GetIndex())
+				RemovePlotFromTables(DevData.Owner, plot:GetIndex())
 			end
 		end
 	end
@@ -741,6 +742,20 @@ end)
 Events.WMDDetonated.Add(function (X, Y, playerID, WMDIndex)
 	
 end)
+
+Events.LoadComplete.Add(
+	function()
+		if #PlotRecalcGrowthEvents > 0 then
+			for _,event in orderedPairs(PlotRecalcGrowthEvents) do
+				event.Add(OnPlotChangeEvent)
+			end
+		end
+
+		Events.DistrictAddedToMap.Add(OnDistrictAdded)
+		Events.ImprovementAddedToMap.Add(OnImprovementAdded)
+		Events.NationalParkAdded.Add(OnNationalParkAdded)
+	end
+)
 
 -- #endregion
 

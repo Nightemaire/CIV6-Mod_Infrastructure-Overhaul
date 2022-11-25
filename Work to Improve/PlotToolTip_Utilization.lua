@@ -14,7 +14,7 @@ include "AutoImprovements_Config.lua";
 XP2_FetchData = FetchData;
 XP2_GetDetails = GetDetails;
 
-print("Initializing Utilization Tooltip UI Script");
+print("Initializing Development Tooltip UI Script");
 
 -- ===========================================================================
 -- OVERRIDE BASE FUNCTIONS
@@ -23,10 +23,13 @@ function FetchData(pPlot)
 	--print("Calling overridden data fetch");
 	local data = XP2_FetchData(pPlot);
 
-	local util = pPlot:GetProperty("PLOT_UTILIZATION");
-	local growth = pPlot:GetProperty("PLOT_UTIL_GROWTH");
-	if util == nil then util = 0; end
-	if growth == nil then growth = 0; end
+	local utilData = pPlot:GetProperty("DEVELOPMENT_DATA");
+	local util = 0
+	local growth = 0
+	if utilData ~= nil then
+		local util = utilData.Development
+		local growth = utilData.Growth
+	end
 	
 	data.Utilization = util;
 	data.Growth = growth;
@@ -40,7 +43,7 @@ function GetDetails(data)
 
 	if (data.Owner == Game.GetLocalPlayer()) then
 		if data.Utilization == nil then
-			table.insert(details, "Utilization: 0% (0)");
+			table.insert(details, "Development: 0% (0)");
 			table.insert(details, "Growth: 0% (0)");
 		else
 			-- Turn the utilization into a percent of the threshold
@@ -48,7 +51,7 @@ function GetDetails(data)
 			if AutoImproveThreshold ~= nil then thold = AutoImproveThreshold; end
 			local percentUtil = math.floor((data.Utilization*100)/thold)
 			local percentGrowth = math.floor((data.Growth*100)/thold)
-			table.insert(details, Locale.Lookup("LOC_PLOT_UTILIZATION_TOOLTIP_TEXT", percentUtil, data.Utilization));
+			table.insert(details, Locale.Lookup("LOC_PLOT_DEVELOPMENT_TOOLTIP_TEXT", percentUtil, data.Utilization));
 			table.insert(details, Locale.Lookup("LOC_PLOT_UTIL_GROWTH_TOOLTIP_TEXT", percentGrowth, data.Growth));
 		end
 		--print("Tried to print something..."..data.Utilization);
