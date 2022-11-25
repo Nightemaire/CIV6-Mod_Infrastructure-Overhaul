@@ -27,7 +27,7 @@
 		</Row>
 
 		<Row Tag="LOC_BUILDING_TCRR_STATION_DESCRIPTION" Language="en_US">
-			<Text>This passenger rail station is the endpoint for a continent spanning engineering marvel. It provides a boost to Tourism [ICON_Tourism] in each city where it's built, but only two can be built in your empire! Place these buildings carefully, as once they're built, construction will begin on the transcontinental railroad between the two stations. The railroad will not be constructed if there is no contiguous route between the stations.</Text>
+			<Text>This passenger rail station is the endpoint for a continent spanning engineering marvel. It provides a boost to Tourism [ICON_Tourism] in each city where it's built, but only two can be built in your empire! Place these buildings carefully, as once they're completed, construction will begin on the transcontinental railroad between the two stations. The railroad will not be constructed if there is no contiguous route within your empire between the stations.</Text>
 		</Row>
 
 	</LocalizedText>

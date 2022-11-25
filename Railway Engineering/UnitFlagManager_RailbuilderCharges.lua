@@ -52,7 +52,7 @@ function OnUnitChargesChanged(playerID, unitID)
     local flagInstance = GetUnitFlag(playerID, unitID);
     if flagInstance ~= nil then 
         flagInstance:UpdatePromotions();
-    end                            
+    end
 end
 
 function UnitFlag.UpdatePromotions(self)
