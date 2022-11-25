@@ -54,8 +54,7 @@ VALUES                                      (  'RAILYARD_ADDTRADEROUTE',        
 
 -- REQUIREMENTS
 INSERT INTO RequirementSets                 (   RequirementSetId,                               RequirementSetType                      )
-VALUES                                      (   'RAILYARD_TRADE_ROUTE_CAPACITY_REQUIREMENTS',   'REQUIREMENTSET_TEST_ALL'               ),
-                                            (   'RAILYARD_ADD_RAILBUILDER_REQUIREMENTS',        'REQUIREMENTSET_TEST_ALL'               );
+VALUES                                      (   'RAILYARD_TRADE_ROUTE_CAPACITY_REQUIREMENTS',   'REQUIREMENTSET_TEST_ALL'               );
 
 INSERT INTO RequirementSetRequirements      (   RequirementSetId,                               RequirementId                           )
 VALUES                                      (   'RAILYARD_TRADE_ROUTE_CAPACITY_REQUIREMENTS',   'REQUIRES_NO_MARKET'                    ),
