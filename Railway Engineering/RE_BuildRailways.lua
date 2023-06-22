@@ -312,11 +312,11 @@ end
 
 function CreateSubwayNetwork(city)
 	local Districts = city:GetDistricts()
-
+	print("Building Subway Network!")
 	-- Find All Valid Stations
 	local Stations = {};
 	for k,district in pairs(Districts) do
-		if validSubwayStations[GameInfo.Districts[district:GetType()].Index] == 1 then
+		if validSubwayStations[district:GetType()] == 1 then
 			table.insert(Stations, plot)
 		end
 	end
