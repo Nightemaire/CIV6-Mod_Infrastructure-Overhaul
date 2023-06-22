@@ -5,10 +5,10 @@
     <Name>Railway Engineering</Name>
     <Guid>43e965ba-4455-4425-b84f-052abfe25cee</Guid>
     <ProjectGuid>{3a660792-140c-430e-9b4b-01447c725f0a}</ProjectGuid>
-    <ModVersion>1</ModVersion>
+    <ModVersion>2</ModVersion>
     <Teaser>Painless railroad construction</Teaser>
-    <Description>Adds a new building, unit, and a great person to make building railroads a little less painful, and maybe a little more fun.</Description>
-    <AffectsSavedGames>false</AffectsSavedGames>
+    <Description>Adds 2 new buildings, a civilian unit, and a great person to make building railroads a little less painful, and maybe a little more fun.</Description>
+    <AffectsSavedGames>true</AffectsSavedGames>
     <SupportsSinglePlayer>true</SupportsSinglePlayer>
     <SupportsMultiplayer>true</SupportsMultiplayer>
     <SupportsHotSeat>true</SupportsHotSeat>

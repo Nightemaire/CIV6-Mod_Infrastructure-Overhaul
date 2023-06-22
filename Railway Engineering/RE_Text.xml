@@ -19,7 +19,7 @@
 		</Row>
 
 		<Row Tag="LOC_BUILDING_RAILYARD_DESCRIPTION" Language="en_US">
-			<Text>The Railyard enables construction of Railway Engineers in the city. +1 [ICON_TradeRoute] Trade Route capacity if this city does not yet have a Market or Lighthouse building.</Text>
+			<Text>The Railyard enables construction of Railway Engineers in the city. +1 [ICON_TradeRoute] Trade Route capacity if this city does not yet have a Market or Lighthouse building. When complete, the railyard will connect railroads to the city that built it.</Text>
 		</Row>
 
 		<Row Tag="LOC_BUILDING_TCRR_STATION_NAME" Language="en_US">
@@ -27,7 +27,15 @@
 		</Row>
 
 		<Row Tag="LOC_BUILDING_TCRR_STATION_DESCRIPTION" Language="en_US">
-			<Text>This passenger rail station is the endpoint for a continent spanning engineering marvel. It provides a boost to Tourism [ICON_Tourism] in each city where it's built, but only two can be built in your empire! Place these buildings carefully, as once they're completed, construction will begin on the transcontinental railroad between the two stations. The railroad will not be constructed if there is no contiguous route within your empire between the stations.</Text>
+			<Text>This passenger rail station is the endpoint for a continent spanning engineering feat. It provides a boost to Tourism [ICON_Tourism] in each city where it's built, but only two can be built in your empire! Place these buildings carefully, as once they're completed, construction will begin on the transcontinental railroad between the two stations. The railroad will not be constructed if there is no contiguous route within your empire between the stations.</Text>
+		</Row>
+
+		<Row Tag="LOC_BUILDING_SUBWAY_NAME" Language="en_US">
+			<Text>Subway Network</Text>
+		</Row>
+
+		<Row Tag="LOC_BUILDING_SUBWAY_DESCRIPTION" Language="en_US">
+			<Text>Completing the Subway Network will connect all completed districts in the city by railroads. Additionally, the city will recieve a 5% bonus to each yield if it contains a district of the appropriate type.</Text>
 		</Row>
 
 	</LocalizedText>

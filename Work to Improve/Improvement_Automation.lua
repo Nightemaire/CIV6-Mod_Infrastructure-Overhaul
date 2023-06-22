@@ -148,11 +148,16 @@ end
 -- ===========================================================================
 -- #region STATE TABLE MANAGEMENT
 -- ===========================================================================
-
+function GetTurnTable(player)
+	return player:GetProperty("AUTO_IMPROVE_TURN_TABLE")
+end
+function GetPlotTable(player)
+	return player:GetProperty("AUTO_IMPROVE_PLOT_TABLE")
+end
 function GetTables(player : object)
 	--print("Getting Tables")
 	if player ~= nil then
-		return player:GetProperty("AUTO_IMPROVE_TURN_TABLE"), player:GetProperty("AUTO_IMPROVE_PLOT_TABLE")
+		return GetTurnTable(player), GetPlotTable(player)
 	end
 	return nil, nil
 end
@@ -295,8 +300,9 @@ end
 -- ===========================================================================
 
 function UpdatePlot(pPlot : object)
-	print("Updating Plot "..pPlot:GetIndex())
 	if pPlot ~= nil then
+		print("Updating Plot "..pPlot:GetIndex())
+
 		local UtilData = GetPlotUtilData(pPlot)
 		UtilData = CalculateImprovementTurn(UtilData, CalculatePlotGrowth(pPlot))
 		SetPlotUtilData(pPlot, UtilData)
@@ -314,12 +320,12 @@ end
 
 function GetTilesToImprove(playerID:number, turn:number)
 	local player = Players[playerID]
-	local TurnTable = player:GetProperty("AUTO_IMPROVE_TURN_TABLE")
+	local TurnTable = GetTurnTable(player)
 	
 	local plots = {}
 	if TurnTable ~= nil then
 		if TurnTable[turn] ~= nil then
-			local PlotTable = player:GetProperty("AUTO_IMPROVE_PLOT_TABLE")
+			local PlotTable = GetPlotTable(player)
 			-- Remove the entry for this turn
 			local TurnEntry = TurnTable[turn]
 			table.remove(TurnTable, turn)

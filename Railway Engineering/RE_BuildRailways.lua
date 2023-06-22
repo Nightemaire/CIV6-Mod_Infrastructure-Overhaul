@@ -1,9 +1,10 @@
--- RailroadConstruction
+--------------------------------------------------------------
+-- Railway Engineering
 -- Author: Nightemaire
--- DateCreated: 6/18/2022 6:35:56 PM
+-- DateCreated: 6/18/2022
 --------------------------------------------------------------
 
-print("ENGINEERING RAILWAYS!!! 18:53")
+print("ENGINEERING RAILWAYS!!! 062323")
 
 -- ===========================================================================
 -- #region Constants and Definitions
@@ -20,6 +21,7 @@ local iRailBuilder = GameInfo.Units["UNIT_RAILWAY_ENGINEER"].Index
 
 local iRailyard = GameInfo.Buildings["BUILDING_RAILYARD"].Index
 local iTCStation = GameInfo.Buildings["BUILDING_TCRR_STATION"].Index
+local iSubway = GameInfo.Buildings["BUILDING_SUBWAY_NETWORK"].Index
 local iFactory = GameInfo.Buildings["BUILDING_FACTORY"].Index
 local iWorkshop = GameInfo.Buildings["BUILDING_WORKSHOP"].Index
 
@@ -27,22 +29,38 @@ local iTheodoreJudah = GameInfo.GreatPersonIndividuals["GREAT_PERSON_INDIVIDUAL_
 
 local iIndustrialZone = GameInfo.Districts["DISTRICT_INDUSTRIAL_ZONE"].Index
 -- Need to get all districts that replace the industrial zone
-
-function GetIZReplacements()
+function GetDistrictReplacements(dist_name)
+	local dist_index = GameInfo.Districts[dist_name].Index
 	local NReplacements = #(GameInfo.DistrictReplaces);
-	local IZ_Replacements = {iIndustrialZone}
+	local Replacements = {dist_index}
 	for i = 0, NReplacements-1 do
 		local replacementType = GameInfo.DistrictReplaces[i].ReplacesDistrictType
 
-		if replacementType == "DISTRICT_INDUSTRIAL_ZONE" then
+		if replacementType == dist_name then
 			local replacement = GameInfo.DistrictReplaces[i].CivUniqueDistrictType
 			local replacement_index = GameInfo.Districts[replacement].Index
-			table.insert(IZ_Replacements, replacement_index)
+			table.insert(Replacements, replacement_index)
 		end
 	end
-	return IZ_Replacements
+	return Replacements
 end
-local IZ_Types = GetIZReplacements()
+local IZ_Types = GetDistrictReplacements("DISTRICT_INDUSTRIAL_ZONE")
+local Campus_Types = GetDistrictReplacements("DISTRICT_INDUSTRIAL_ZONE")
+local Theater_Types = GetDistrictReplacements("DISTRICT_THEATER")
+local Commercial_Types = GetDistrictReplacements("DISTRICT_COMMERCIAL_HUB")
+local Holysite_Types = GetDistrictReplacements("DISTRICT_HOLY_SITE")
+local Neighborhood_Types = GetDistrictReplacements("DISTRICT_NEIGHBORHOOD")
+local Encampment_Types = GetDistrictReplacements("DISTRICT_ENCAMPMENT")
+local Entertainment_Types = GetDistrictReplacements("DISTRICT_ENTERTAINMENT_COMPLEX")
+local validSubwayStations = {}
+for k,i in pairs(IZ_Types) do validSubwayStations[i] = 1; end
+for k,i in pairs(Campus_Types) do validSubwayStations[i] = 1; end
+for k,i in pairs(Theater_Types) do validSubwayStations[i] = 1; end
+for k,i in pairs(Commercial_Types) do validSubwayStations[i] = 1; end
+for k,i in pairs(Holysite_Types) do validSubwayStations[i] = 1; end
+for k,i in pairs(Neighborhood_Types) do validSubwayStations[i] = 1; end
+for k,i in pairs(Encampment_Types) do validSubwayStations[i] = 1; end
+for k,i in pairs(Entertainment_Types) do validSubwayStations[i] = 1; end
 
 local GameSpeedType = GameConfiguration.GetGameSpeedType()
 local RsrcMultiplier = math.floor(GameInfo.GameSpeeds[GameSpeedType].CostMultiplier / 50)
@@ -71,7 +89,7 @@ function OnUnitAdded(playerID : number, unitID : number)
 
 			-- get the industrial zone tile and move the unit there
 			local city = CityManager.GetCityAt(tileX, tileY)
-			CreateRailroadAt(Map.GetPlot(tileX, tileY))
+			--CreateRailroadAt(Map.GetPlot(tileX, tileY))
 			print("City ID: "..city:GetID())
 			local IZ_X, IZ_Y = getIndustrialZoneTile(city)
 
@@ -80,7 +98,6 @@ function OnUnitAdded(playerID : number, unitID : number)
 				IZ_X = tileX
 				IZ_Y = tileY
 			end
-			
 			local plot = Map.GetPlot(IZ_X, IZ_Y);
 			CreateRailroadAt(plot)
 			UnitManager.PlaceUnit(unit, IZ_X, IZ_Y)
@@ -109,11 +126,11 @@ function OnUnitMoved(playerID:number, unitID, tileX, tileY)
 						unit:ChangeActionCharges(-1)
 					end
 				end
-				
-				if unit:GetActionCharges() <= 0 then
-					print("Charges gone, destroying Railway Engineer");
-					UnitManager.Kill(unit);
-				end
+			end
+
+			if unit:GetActionCharges() <= 0 then
+				print("Charges gone, firing the Railway Engineer");
+				UnitManager.Kill(unit);
 			end
 		elseif unit:IsGreatPerson() then
 			if unit:GetGreatPerson():GetIndividual() == iTheodoreJudah then
@@ -135,6 +152,8 @@ function OnGreatPersonActivation(unitOwner, unitID, greatPersonClassID, greatPer
 			else
 				print("Tried to make the TC Station, but city was nil!")
 			end
+		else
+			print("Activated Judah, but the plot was nil...why!?")
 		end
 	end
 end
@@ -146,7 +165,7 @@ function OnBuildingConstructed(playerID, cityID, buildingID, plotID, bOriginalCo
 			local city = CityManager.GetCity(playerID, cityID)
 			local cityPlot = Map.GetPlot(city:GetX(), city:GetY())
 
-			CreateRouteFromTo(plot, cityPlot)
+			CreateRailroadFromTo(plot, cityPlot)
 			--local player = Players[playerID]
 			-- Spawn a free railbuilder for the AI, because they probably won't build one themselves
 			--if player:IsAI() then
@@ -154,20 +173,23 @@ function OnBuildingConstructed(playerID, cityID, buildingID, plotID, bOriginalCo
 			--end
 		elseif (buildingID == iTCStation) then
 			local actPlot = Map.GetPlotByIndex(plotID)
-			local areaID = actPlot:GetArea()
-			MapUtilities.ObtainLandmassBoundaries(areaID)
+			--local areaID = actPlot:GetArea()
+			--MapUtilities.ObtainLandmassBoundaries(areaID)
 			local player = Players[playerID]
 
 			local TC_RR_Start = player:GetProperty("TCRR_START")
 
-			CreateRailroadAt(actPlot)
-
 			if TC_RR_Start == nil then
 				player:SetProperty("TCRR_START", actPlot:GetIndex())
-				local disconnectedCities = FindDisconnectedCities(areaID, playerID)
+				CreateRailroadAt(actPlot)
+				--local disconnectedCities = FindDisconnectedCities(areaID, playerID)
 			else
-				StartTranscontinentalRailroad(Map.GetPlotByIndex(TC_RR_Start), actPlot, playerID)
+				CreateRailroadAt(actPlot)
+				StartTCRR(Map.GetPlotByIndex(TC_RR_Start), actPlot, playerID)
 			end
+		elseif (buildingID == iSubway) then
+			local city = CityManager.GetCity(playerID, cityID)
+			CreateSubwayNetwork(city)
 		end
 	end
 end
@@ -187,11 +209,14 @@ function OnPlayerTurnStart(playerID, isFirstTime)
 
 		local startProgress = data.progress
 
-		progress, building = BuildTranscontinentalSection(data, playerID)
+		progress, building = ContinueTCRR(data, playerID)
+		plot = Map.GetPlotByIndex(data.PrevPlotF)
+		plotX = plot:GetX()
+		plotY = plot:GetY()
 
 		if startProgress < 50 and progress >= 50 then
 			local msgString = "Halfway there!"
-			local sumString = "The Transcontinental Railroad is halfway completed!"
+			local sumString = "The Transcontinental Railroad is halfway complete!"
 			local type = GameInfo.Notifications["NOTIFICATION_ROADS_UPGRADED"].Index;
 			NotificationManager.SendNotification(playerID, type, msgString, sumString, plotX, plotY);
 			--print("More than halfway there!")
@@ -208,30 +233,28 @@ function OnPlayerTurnStart(playerID, isFirstTime)
 	end
 end
 
+local eventsLoaded = false
 function OnLoad()
-	Events.UnitAddedToMap.Add(OnUnitAdded)
-	Events.UnitMoved.Add(OnUnitMoved)
-	Events.UnitTeleported.Add(OnUnitMoved)
-	Events.UnitGreatPersonActivated.Add(OnGreatPersonActivation)
+	if (not(eventsLoaded)) then
+		print("Registering Events")
+		Events.UnitAddedToMap.Add(OnUnitAdded)
+		Events.UnitMoved.Add(OnUnitMoved)
+		Events.UnitTeleported.Add(OnUnitMoved)
+		--Events.UnitGreatPersonActivated.Add(OnGreatPersonActivation)
 
-	GameEvents.BuildingConstructed.Add(OnBuildingConstructed)
-	GameEvents.PlayerTurnStarted.Add(OnPlayerTurnStart)
+		GameEvents.BuildingConstructed.Add(OnBuildingConstructed)
+		GameEvents.PlayerTurnStarted.Add(OnPlayerTurnStart)
+
+		eventsLoaded = true
+	end
 end
-
-Events.LoadComplete.Add(function ()
-	Events.UnitAddedToMap.Add(OnUnitAdded)
-	Events.UnitMoved.Add(OnUnitMoved)
-	Events.UnitTeleported.Add(OnUnitMoved)
-	--Events.UnitGreatPersonActivated.Add(OnGreatPersonActivation)
-
-	GameEvents.BuildingConstructed.Add(OnBuildingConstructed)
-	GameEvents.PlayerTurnStarted.Add(OnPlayerTurnStart)
-end)
+--Events.LoadComplete.Add(OnLoad)
+GameEvents.OnGameTurnStarted.Add(OnLoad)
 
 -- #endregion
 
 -- ===========================================================================
--- #region Utitity functions: Railroads
+-- #region Railroad Management
 -- ===========================================================================
 
 function getIndustrialZoneTile(city)
@@ -287,6 +310,22 @@ function UpgradeCityToRailroads(city)
 	end
 end
 
+function CreateSubwayNetwork(city)
+	local Districts = city:GetDistricts()
+
+	-- Find All Valid Stations
+	local Stations = {};
+	for k,district in pairs(Districts) do
+		if validSubwayStations[GameInfo.Districts[district:GetType()].Index] == 1 then
+			table.insert(Stations, plot)
+		end
+	end
+
+	for i = 1, #Stations do
+		ConnectRailroadToNearest(Stations[i], 3)
+	end
+end
+
 function HasAdjacentRailroad(plot)
 	local startX = plot:GetX();
 	local startY = plot:GetY();
@@ -300,15 +339,17 @@ function HasAdjacentRailroad(plot)
 	return false;
 end
 
-function buildChunk(plot, prevPlot, bTunneling, playerID)
+function ExtendDirection(plot, prevPlot, bTunneling, playerID)
 	local tunnelling = bTunneling
 
 	if plot:IsMountain() then
+		-- Open a new tunnel if needed
 		if not(bTunneling) then
 			ImprovementBuilder.SetImprovementType(plot, iTunnel, playerID)
 			tunnelling = true
 		end
 	else
+		-- Close the tunnel on the previous plot
 		if bTunneling then
 			ImprovementBuilder.SetImprovementType(prevPlot, iTunnel, playerID)
 		end
@@ -319,126 +360,148 @@ function buildChunk(plot, prevPlot, bTunneling, playerID)
 	return tunnelling
 end
 
-function SendLowResourceNotification(playerID, locX, locY)
-	local msgString = "Work has slowed!"
-	local sumString = "Construction of the Transcontinental Railroad has slowed due to a lack of resources!"
-	local type = GameInfo.Notifications["NOTIFICATION_ROADS_UPGRADED"].Index;
-	NotificationManager.SendNotification(playerID, type, msgString, sumString, locX, locY);
+function FinishTCRR(playerID, data, PlotF, PlotR)
+	PrevPlotF = Map.GetPlotByIndex(data.prevPlotF)
+	PrevPlotR = Map.GetPlotByIndex(data.prevPlotR)
+
+	if PlotR == nil then
+		if PrevPlotF == nil or PlotF == nil or PrevPlotR == nil then
+			print("Cannot finish TCRR, one or more required plots are nil")
+			return
+		end
+		-- There's only one tile in the middle
+		local M1 = PrevPlotF:IsMountain()
+		local M2 = PlotF:IsMountain()
+		local M3 = PrevPlotR:IsMountain()
+
+		if not(M2) then
+			-- Middle tile is not a mountain, need to close any previous tunnels!
+			CreateRailroadAt(PlotF)
+			if M1 then ImprovementBuilder.SetImprovementType(PrevPlotF, iTunnel, playerID) end
+			if M3 then ImprovementBuilder.SetImprovementType(PrevPlotR, iTunnel, playerID) end
+		else
+			-- Middle tile is a mountain
+			if not(M1 and M3) then
+				-- One of either adjacent tiles is not a mountain, meaning we can close this tunnel
+				-- If both are mountains, then the route is done!
+				ImprovementBuilder.SetImprovementType(PlotF, iTunnel, playerID)
+			end
+		end		
+	else
+		if PrevPlotF == nil or PlotF == nil or PlotR == nil or PrevPlotR == nil then
+			print("Cannot finish TCRR, one or more required plots are nil")
+			return
+		end
+		-- Both tiles need to be finished
+		local M1 = PrevPlotF:IsMountain()
+		local M2 = PlotF:IsMountain()
+		local M3 = PlotR:IsMountain()
+		local M4 = PrevPlotR:IsMountain()
+
+		if not(M2) and not(M3) then
+			-- Neither middle plot is a mountain, build railroads and check for tunnel exits
+			CreateRailroadAt(PlotF)
+			CreateRailroadAt(PlotR)
+			if M1 then ImprovementBuilder.SetImprovementType(PrevPlotF, iTunnel, playerID) end
+			if M4 then ImprovementBuilder.SetImprovementType(PrevPlotR, iTunnel, playerID) end
+		end
+		if M2 and not(M3) then
+			-- One plot is a mountain, build one railroad, one tunnel exit, and check for another tunnel exit
+			CreateRailroadAt(PlotR)
+			ImprovementBuilder.SetImprovementType(PlotF, iTunnel, playerID)
+			if M4 then ImprovementBuilder.SetImprovementType(PrevPlotR, iTunnel, playerID) end
+		end
+		if not(M2) and M3 then
+			-- One plot is a mountain, build one railroad, one tunnel exit, and check for another tunnel exit
+			CreateRailroadAt(PlotF)
+			ImprovementBuilder.SetImprovementType(PlotR, iTunnel, playerID)
+			if M1 then ImprovementBuilder.SetImprovementType(PrevPlotF, iTunnel, playerID) end
+		end
+		if M2 and M3 then
+			-- Both plots are mountains, don't build railroads, only check if they're tunnel exits
+			if not(M1) then ImprovementBuilder.SetImprovementType(PlotF, iTunnel, playerID) end
+			if not(M4) then ImprovementBuilder.SetImprovementType(PlotR, iTunnel, playerID) end
+		end
+	end
 end
 
-function BuildTranscontinentalSection(data, playerID)
+function ContinueTCRR(data, playerID)
 	local player = Players[playerID]
 
 	local speed = math.max(1, 6-RsrcMultiplier)
 	local building = true
 
 	if data ~= nil then
-		if #(data.Route) > 0 then
-			for i = 1,speed do
-				local route = data.Route
-				local remaining = #(route)
+		for i = 1,speed do
+			local route = data.Route
+			local remaining = #(route)
 
-				if remaining <= 0 then
-					-- Build complete
-					building = false
-					break
-				end
+			-- Break out if there isn't anything left to build
+			if remaining <= 0 then
+				-- Build complete
+				building = false
+				break
+			end
 
-				local ironAmount = player:GetResources():GetResourceAmount("RESOURCE_IRON")
-				local coalAmount = player:GetResources():GetResourceAmount("RESOURCE_COAL")
+			-- Get resource information
+			local thisCost = RR_ResourceCost * 2
+			if remaining == 1 then thisCost = RR_ResourceCost; end
 
+			local playerIron = player:GetResources():GetResourceAmount("RESOURCE_IRON")
+			local playerCoal = player:GetResources():GetResourceAmount("RESOURCE_COAL")
+
+			if playerIron >= thisCost and playerCoal >= thisCost then
+				local Plot1 = Map.GetPlotByIndex(table.remove(route, 1))
 				if remaining == 1 then
-					-- One tile remains in the middle
-					if ironAmount >= RR_ResourceCost and coalAmount >= RR_ResourceCost then
-						local thisPlot = Map.GetPlotByIndex(table.remove(route))
-
-						if data.tunnellingF or data.tunnellingR then
-							if data.tunnellingF and data.tunnellingR then
-								-- in the same mountain chain, so we're done
-							else
-								-- Only one direction is tunnelling, so force an exit tunnel to be built
-								if data.tunnellingF then
-									buildChunk(thisPlot, nil, false, playerID)
-								else
-									buildChunk(thisPlot, nil, false, playerID)
-								end
-							end
-						else
-							-- Dont need to worry about tunnelling
-							buildChunk(thisPlot, nil, false, playerID)
-						end
-
-						player:GetResources():ChangeResourceAmount(iIron, -RR_ResourceCost)
-						player:GetResources():ChangeResourceAmount(iCoal, -RR_ResourceCost)
-						
-						data.step = data.step + 1
-						building = false
-					else
-						-- Notify user that they're almost done but out of resources
-						local plot = Map.GetPlotByIndex(route[1])
-						SendLowResourceNotification(playerID, plot:GetX(), plot:GetY())
-					end
+					-- 1 tile left
+					FinishTCRR(playerID, data, Plot1)
+					building = false
 				elseif remaining == 2 then
-					if ironAmount >= RR_ResourceCost*2 and coalAmount >= RR_ResourceCost*2 then
-						-- Two tiles left, need to force close any tunnels
-						local thisPlot = Map.GetPlotByIndex(table.remove(route))
-						buildChunk(thisPlot, nil, false, playerID)
-
-						thisPlot = Map.GetPlotByIndex(table.remove(route, 1))
-						buildChunk(thisPlot, nil, false, playerID)
-
-						player:GetResources():ChangeResourceAmount(iIron, -RR_ResourceCost*2)
-						player:GetResources():ChangeResourceAmount(iCoal, -RR_ResourceCost*2)
-
-						data.step = data.step + 1
-						-- No matter what, we're done building here
-						building = false
-					else
-						-- Notify user that they're almost done but out of resources
-						local plot = Map.GetPlotByIndex(route[1])
-						SendLowResourceNotification(playerID, plot:GetX(), plot:GetY())
-					end
+					-- 2 tiles left
+					local Plot2 = Map.GetPlotByIndex(table.remove(route))
+					FinishTCRR(playerID, data, Plot1, Plot2)
+					building = false
 				else
-					if ironAmount >= RR_ResourceCost*2 and coalAmount >= RR_ResourceCost*2 then
-						-- Each direction still needs to build
-						local thisPlot = Map.GetPlotByIndex(table.remove(route))
-						data.tunnellingF = buildChunk(thisPlot, Map.GetPlotByIndex(data.prevPlotF), data.tunnellingF, playerID)
-						data.prevPlotF = thisPlot:GetIndex()
+					-- More than 2 tiles left
+					local Plot2 = Map.GetPlotByIndex(table.remove(route))
+					data.tunnellingF = ExtendDirection(Plot1, Map.GetPlotByIndex(data.prevPlotF), data.tunnellingF, playerID)
+					data.prevPlotF = Plot1:GetIndex()
 
-						thisPlot = Map.GetPlotByIndex(table.remove(route, 1))
-						data.tunnellingR = buildChunk(thisPlot, Map.GetPlotByIndex(data.prevPlotR), data.tunnellingR, playerID)
-						data.prevPlotR = thisPlot:GetIndex()
-						
-						player:GetResources():ChangeResourceAmount(iIron, -RR_ResourceCost*2)
-						player:GetResources():ChangeResourceAmount(iCoal, -RR_ResourceCost*2)
-
-						data.step = data.step + 1
-					else
-						-- Notify user that they're out of resources
-						local plot = Map.GetPlotByIndex(route[1])
-						SendLowResourceNotification(playerID, plot:GetX(), plot:GetY())
-					end
+					data.tunnellingR = ExtendDirection(Plot2, Map.GetPlotByIndex(data.prevPlotR), data.tunnellingR, playerID)
+					data.prevPlotR = Plot2:GetIndex()
 				end
 
-				data.progress = (data.step/data.TotalLength)*100
-				data.Route = route
+				-- Deduct resources
+				player:GetResources():ChangeResourceAmount(iIron, -thisCost)
+				player:GetResources():ChangeResourceAmount(iCoal, -thisCost)
 
-				if not(building) then break; end
-			end
-
-			if not(building) then
-				player:SetProperty("TCRR_DATA", nil)
+				data.step = data.step + 1
 			else
-				player:SetProperty("TCRR_DATA", data)
+				-- Not enough resources, notify player
+				local plot = Map.GetPlotByIndex(route[1])
+				SendLowResourceNotification(playerID, plot:GetX(), plot:GetY())
 			end
 
-			return data.progress, building
+			data.progress = (data.step/data.TotalLength)*100
+			data.Route = route
+
+			if not(building) then break; end
 		end
-				
+
+		if not(building) then
+			player:SetProperty("TCRR_DATA", nil)
+		else
+			player:SetProperty("TCRR_DATA", data)
+		end
+
+		return data.progress, building
+	else
+		print("TCRR Data was nil, how'd that happen?!")
+		return 0, false
 	end
 end
 
-function StartTranscontinentalRailroad(StartPlot, EndPlot, playerID)
+function StartTCRR(StartPlot, EndPlot, playerID)
 	local route = GetRailroadRoute(StartPlot, EndPlot, 99999)
 
 	if #route > 0 then
@@ -458,21 +521,30 @@ function StartTranscontinentalRailroad(StartPlot, EndPlot, playerID)
 		player:SetProperty("TCRR_DATA", TCRR_Data)
 
 		local msgString = "Work has begun!"
-		local sumString = "Theodore Judah started construction of the Transcontinental Railroad!"
+		local sumString = "Your empire has begun construction of the Transcontinental Railroad!"
 		local type = GameInfo.Notifications["NOTIFICATION_ROADS_UPGRADED"].Index;
 		NotificationManager.SendNotification(playerID, type, msgString, sumString, StartPlot:GetX(), StartPlot:GetY());
 
 		-- Set Owner of all tiles to the player
 		for _,tile in ipairs(route) do
-			Map.GetPlotByIndex(tile):SetOwner(playerID)			
+			Map.GetPlotByIndex(tile):SetOwner(playerID)
 		end
+	else
+		print("No route was found for the TCRR between the two cities :(")
 	end
+end
+
+function SendLowResourceNotification(playerID, locX, locY)
+	local msgString = "Work has slowed!"
+	local sumString = "Construction of the Transcontinental Railroad has slowed due to a lack of resources!"
+	local type = GameInfo.Notifications["NOTIFICATION_ROADS_UPGRADED"].Index;
+	NotificationManager.SendNotification(playerID, type, msgString, sumString, locX, locY);
 end
 
 -- #endregion
 
 -- ===========================================================================
--- #region Utitity functions: Routebuilding
+-- #region Routebuilding
 -- ===========================================================================
 
 -- ===========================================================================
@@ -503,22 +575,24 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 		local endX = endPlot:GetX()
 		local endY = endPlot:GetY()
 
+		if (range == nil) then range = 999999; end
+
 		-- Take care of a few simple cases first
 		if startPlot:IsWater() or endPlot:IsWater() then
-			print_if_debugging("One of the tiles in the route is water...")
+			print_if_debugging("WARNING: One of the tiles in the route is water...")
 			return {}, 99999;
 		end
 		if startPlot:GetIndex() == endPlot:GetIndex() then
-			print_if_debugging("Start and end plots are the same...why are you trying to find a path?")
+			print_if_debugging("WARNING: Start and end plots are the same...why are you trying to find a path?")
 			return {startPlot}, 0
 		end
 		minDist = Map.GetPlotDistance(startX, startY, endX, endY)
 		if minDist <= 1 then
-			print_if_debugging("Start and end plots are adjacent...pretty simple one here...")
+			print_if_debugging("NO PATH: Start and end plots are adjacent...pretty simple one here...")
 			return {endPlot, startPlot}, 1
 		end
 		if minDist > range then
-			print_if_debugging("Plots are too far from one another (specified range: "..range..")")
+			print_if_debugging("NO PATH: Plots are too far from one another (specified range: "..range..")")
 			return {}, 99999;
 		end
 
@@ -528,7 +602,7 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 		print_if_debugging("Routing from <"..startX..","..startY.."> to <"..endX..","..endY..">");
 		local fastestPath = {}
 		local totalMoveCost = 99999
-		
+
 		-- Local tables for storing plots
 		local OpenList = {}
 		local ClosedList = {}
@@ -554,6 +628,7 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 		local function OpenPlot(currPlot : object, initialCost, bIsStart, dir, dirMatch)
 			if currPlot ~= nil then
 				local plotOwner = currPlot:GetOwner()
+				-- For building the railroads, we care that its the correct owner or no owner
 				if plotOwner == -1 or plotOwner == startPlot:GetOwner() then
 					local G = 0
 					local H = Map.GetPlotDistance(currPlot:GetX(), currPlot:GetY(), endX, endY)
@@ -579,7 +654,7 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 					print_if_debugging(">> Opened plot: "..plotID.." <"..H..", "..G..", "..F.."> "..printStr..dir);
 				end
 			else
-				print("Why'd you try to add a nil plot to the open list?");
+				print("ERROR: Why'd you try to add a nil plot to the open list?");
 			end
 		end
 
@@ -807,18 +882,67 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 
 		return fastestPath, totalMoveCost
 	else
-		print("One of the provided plots was nil...")
+		print("ERROR: One of the provided plots was nil...")
 	end
 end
 
-function CreateRouteFromTo(fromPlot : object, toPlot : object)
-	local path, cost = GetRailroadRoute(fromPlot, toPlot, 5)
+function CreateRailroadFromTo(fromPlot : object, toPlot : object, range)
+	local path, cost = GetRailroadRoute(fromPlot, toPlot, range)
 	if path ~= nil then
 		for k, tile in pairs(path) do
 			CreateRailroadAt(Map.GetPlotByIndex(tile))
 		end
-	else
-		print("No connections could be made :/")
+	end
+end
+
+function GetAllRailroadsInRange(startPlot : object, range)
+	local routePlots = {}
+
+	for pAdjacencyPlot in PlotAreaSpiralIterator(startPlot, range, SECTOR_NONE, DIRECTION_CW, DIRECTION_OUT, CENTRE_EXCLUDE) do
+		local routeType = pAdjacencyPlot:GetRouteType();
+        if routeType == iRailroad then
+			table.insert(routePlots, pAdjacencyPlot)
+        end
+    end
+	
+	return routePlots
+end
+
+function ConnectRailroadToNearest(fromPlot : object, range)
+	if fromPlot ~= nil then
+		local owningPlayer = fromPlot:GetOwner()
+
+		if notNilOrNegative(owningPlayer) then
+			-- The starting tile has an owner, proceed
+			local routesInRange = GetAllRailroadsInRange(fromPlot, range)
+			
+			-- If we found some routes
+			if #(routesInRange) > 0 then 
+				local minCost = 99999
+				local fastPath = nil
+
+				for k,routePlot in pairs(routesInRange) do
+					if routePlot:GetOwner() == owningPlayer then
+						local path, cost = GetLandRoute(fromPlot, routePlot, range)
+						if (#(path) > 0 and cost < minCost) then
+							fastPath = path 
+							minCost = cost
+						end
+					end
+				end
+				if fastPath ~= nil then
+					for k, tile in pairs(fastPath) do
+						CreateRailroadAt(tile)
+					end
+				else
+					print("No connections could be made :/")
+				end
+			else
+				print("No nearby railroads or districts were found to connect :(")
+			end
+		else
+			print("The plot you tried to connect to isn't owned...")
+		end
 	end
 end
 
