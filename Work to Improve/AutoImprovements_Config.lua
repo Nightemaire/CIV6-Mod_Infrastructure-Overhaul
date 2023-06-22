@@ -48,7 +48,7 @@ Allow_Jungle_Removal = false
 -- BONUS WHEN WORKED --
 -- This is the bonus applied to the gain when a tile is worked. A value of 5 will exactly cancel out a tile with
 -- disgusting appeal, and the tile will not gain any utilization.
-Utilization_Bonus_If_Worked = 5
+Development_Bonus_If_Worked = 5
 
 -- ADDITIONAL BONUSES --
 GROWTH_FRESHWATER = 2
@@ -61,7 +61,7 @@ local SpeedMultiplier = GameInfo.GameSpeeds[GameSpeedType].CostMultiplier
 -- Required utilization before the tile automatically improves
 AutoImproveThreshold = Threshold_Scalar * SpeedMultiplier
 
--- Utilization works with appeal, which is low order of magnitude, so we scale that to work with the threshold
-UtilizationScalar = 10
+-- Development works with appeal, which is low order of magnitude, so we scale that to work with the threshold
+DevelopmentScalar = 10	
 
 --print("Auto-Improvements config loaded")

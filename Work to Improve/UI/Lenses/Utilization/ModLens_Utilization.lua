@@ -27,7 +27,7 @@ local CityColor				= UI.GetColorValue("COLOR_UTIL_CITY")
 local UTIL_LENS_NAME = "UTIL_LENS"
 local GROWTH_LENS_NAME = "GROWTH_LENS"
 
-local UTILIZATION_LENS_LAYER = UILens.CreateLensLayerHash("Hex_Coloring_Appeal_Level")
+local DEVELOPMENT_LENS_LAYER = UILens.CreateLensLayerHash("Hex_Coloring_Appeal_Level")
 local GROWTH_LENS_LAYER = UILens.CreateLensLayerHash("Hex_Coloring_Appeal_Level")
 
 -- ===========================================================================
@@ -61,7 +61,7 @@ local function OnGetUtilPlotTable()
 				elseif plot:GetImprovementType() >= 0 then
 					table.insert(colorPlot[ImprovementColor], plot:GetIndex())
 				else
-					local util = plot:GetProperty("UTILIZATION_DATA").Utilization
+					local util = plot:GetProperty("DEVELOPMENT_DATA").Utilization
 					if util == nil then util = 0; end
 					
 					thold = 100;
@@ -108,7 +108,7 @@ local function OnGetGrowthPlotTable()
 				else
 					local index = 1
 					
-					local growth = plot:GetProperty("UTILIZATION_DATA").Growth
+					local growth = plot:GetProperty("DEVELOPMENT_DATA").Growth
 					if growth == nil then 
 						growth = 0
 					else
@@ -141,8 +141,8 @@ end
 -- ===========================================================================
 
 local UtilizationLensEntry = {
-	LensButtonText = "LOC_HUD_UTILIZATION_LENS",
-	LensButtonTooltip = "LOC_HUD_UTILIZATION_LENS_TOOLTIP",
+	LensButtonText = "LOC_HUD_DEVELOPMENT_LENS",
+	LensButtonTooltip = "LOC_HUD_DEVELOPMENT_LENS_TOOLTIP",
 	Initialize = nil,
 	GetColorPlotTable = OnGetUtilPlotTable
 };
@@ -155,13 +155,13 @@ local GrowthLensEntry = {
 };
 
 UtilizationLensLegend = {
-    {"LOC_TOOLTIP_UTILIZATION_LOWEST",			ColorGradient[1]},
-    {"LOC_TOOLTIP_UTILIZATION_LOW",				ColorGradient[2]},
-    {"LOC_TOOLTIP_UTILIZATION_MEDIUM",			ColorGradient[3]},
-    {"LOC_TOOLTIP_UTILIZATION_HIGH",			ColorGradient[4]},
-    {"LOC_TOOLTIP_UTILIZATION_HIGHEST",			ColorGradient[5]},
-	{"LOC_TOOLTIP_UTILIZATION_IMPROVEMENT",		ImprovementColor},
-	{"LOC_TOOLTIP_UTILIZATION_CITY",			CityColor},
+    {"LOC_TOOLTIP_DEVELOPMENT_LOWEST",			ColorGradient[1]},
+    {"LOC_TOOLTIP_DEVELOPMENT_LOW",				ColorGradient[2]},
+    {"LOC_TOOLTIP_DEVELOPMENT_MEDIUM",			ColorGradient[3]},
+    {"LOC_TOOLTIP_DEVELOPMENT_HIGH",			ColorGradient[4]},
+    {"LOC_TOOLTIP_DEVELOPMENT_HIGHEST",			ColorGradient[5]},
+	{"LOC_TOOLTIP_DEVELOPMENT_IMPROVEMENT",		ImprovementColor},
+	{"LOC_TOOLTIP_DEVELOPMENT_CITY",			CityColor},
 }
 
 GrowthLensLegend = {
@@ -170,8 +170,8 @@ GrowthLensLegend = {
     {"LOC_TOOLTIP_GROWTH_MEDIUM",			ColorGradient[3]},
     {"LOC_TOOLTIP_GROWTH_HIGH",				ColorGradient[4]},
     {"LOC_TOOLTIP_GROWTH_HIGHEST",			ColorGradient[5]},
-	{"LOC_TOOLTIP_UTILIZATION_IMPROVEMENT",		ImprovementColor},
-	{"LOC_TOOLTIP_UTILIZATION_CITY",			CityColor},
+	{"LOC_TOOLTIP_DEVELOPMENT_IMPROVEMENT",		ImprovementColor},
+	{"LOC_TOOLTIP_DEVELOPMENT_CITY",			CityColor},
 }
 
 -- minimappanel.lua
@@ -183,7 +183,7 @@ end
 -- modallenspanel.lua
 if g_ModLensModalPanel ~= nil then
     g_ModLensModalPanel[UTIL_LENS_NAME] = {}
-    g_ModLensModalPanel[UTIL_LENS_NAME].LensTextKey = "LOC_HUD_UTILIZATION_LENS"
+    g_ModLensModalPanel[UTIL_LENS_NAME].LensTextKey = "LOC_HUD_DEVELOPMENT_LENS"
     g_ModLensModalPanel[UTIL_LENS_NAME].Legend = UtilizationLensLegend
 
 	g_ModLensModalPanel[GROWTH_LENS_NAME] = {}

@@ -5,10 +5,10 @@
 
 <GameData>
 	<BaseGameText>
-		<Row Tag="LOC_HUD_UTILIZATION_LENS">
+		<Row Tag="LOC_HUD_DEVELOPMENT_LENS">
 			<Text>Utilization</Text>
 		</Row>
-		<Row Tag="LOC_HUD_UTILIZATION_LENS_TOOLTIP">
+		<Row Tag="LOC_HUD_DEVELOPMENT_LENS_TOOLTIP">
 			<Text>Highlights information about tile utilization</Text>
 		</Row>
 		<Row Tag="LOC_HUD_GROWTH_LENS">
@@ -18,26 +18,26 @@
 			<Text>Highlights information about tile utilization growth</Text>
 		</Row>
 		
-		<!-- UTILIZATION -->
-		<Row Tag="LOC_TOOLTIP_UTILIZATION_LOWEST">
+		<!-- DEVELOPMENT -->
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_LOWEST">
 			<Text>Less than 20</Text>
 		</Row>
-		<Row Tag="LOC_TOOLTIP_UTILIZATION_LOW">
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_LOW">
 			<Text>20-40</Text>
 		</Row>
-		<Row Tag="LOC_TOOLTIP_UTILIZATION_MEDIUM">
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_MEDIUM">
 			<Text>40-60</Text>
 		</Row>
-		<Row Tag="LOC_TOOLTIP_UTILIZATION_HIGH">
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_HIGH">
 			<Text>60-80</Text>
 		</Row>
-		<Row Tag="LOC_TOOLTIP_UTILIZATION_HIGHEST">
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_HIGHEST">
 			<Text>More than 80</Text>
 		</Row>
-		<Row Tag="LOC_TOOLTIP_UTILIZATION_IMPROVEMENT">
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_IMPROVEMENT">
 			<Text>Improvement</Text>
 		</Row>
-		<Row Tag="LOC_TOOLTIP_UTILIZATION_CITY">
+		<Row Tag="LOC_TOOLTIP_DEVELOPMENT_CITY">
 			<Text>City</Text>
 		</Row>
 		<!-- GROWTH -->
