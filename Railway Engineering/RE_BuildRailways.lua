@@ -29,7 +29,7 @@ local iTheodoreJudah = GameInfo.GreatPersonIndividuals["GREAT_PERSON_INDIVIDUAL_
 
 local iIndustrialZone = GameInfo.Districts["DISTRICT_INDUSTRIAL_ZONE"].Index
 -- Need to get all districts that replace the industrial zone
-function GetDistrictReplacements(dist_name)
+function GetDistrictTypes(dist_name)
 	local dist_index = GameInfo.Districts[dist_name].Index
 	local NReplacements = #(GameInfo.DistrictReplaces);
 	local Replacements = {dist_index}
@@ -44,23 +44,24 @@ function GetDistrictReplacements(dist_name)
 	end
 	return Replacements
 end
-local IZ_Types = GetDistrictReplacements("DISTRICT_INDUSTRIAL_ZONE")
-local Campus_Types = GetDistrictReplacements("DISTRICT_INDUSTRIAL_ZONE")
-local Theater_Types = GetDistrictReplacements("DISTRICT_THEATER")
-local Commercial_Types = GetDistrictReplacements("DISTRICT_COMMERCIAL_HUB")
-local Holysite_Types = GetDistrictReplacements("DISTRICT_HOLY_SITE")
-local Neighborhood_Types = GetDistrictReplacements("DISTRICT_NEIGHBORHOOD")
-local Encampment_Types = GetDistrictReplacements("DISTRICT_ENCAMPMENT")
-local Entertainment_Types = GetDistrictReplacements("DISTRICT_ENTERTAINMENT_COMPLEX")
+local IZ_Types = GetDistrictTypes("DISTRICT_INDUSTRIAL_ZONE")
+local Campus_Types = GetDistrictTypes("DISTRICT_CAMPUS")
+local Theater_Types = GetDistrictTypes("DISTRICT_THEATER")
+local Commercial_Types = GetDistrictTypes("DISTRICT_COMMERCIAL_HUB")
+local Holysite_Types = GetDistrictTypes("DISTRICT_HOLY_SITE")
+local Neighborhood_Types = GetDistrictTypes("DISTRICT_NEIGHBORHOOD")
+local Encampment_Types = GetDistrictTypes("DISTRICT_ENCAMPMENT")
+local Entertainment_Types = GetDistrictTypes("DISTRICT_ENTERTAINMENT_COMPLEX")
+
 local validSubwayStations = {}
-for k,i in pairs(IZ_Types) do validSubwayStations[i] = 1; end
-for k,i in pairs(Campus_Types) do validSubwayStations[i] = 1; end
-for k,i in pairs(Theater_Types) do validSubwayStations[i] = 1; end
-for k,i in pairs(Commercial_Types) do validSubwayStations[i] = 1; end
-for k,i in pairs(Holysite_Types) do validSubwayStations[i] = 1; end
-for k,i in pairs(Neighborhood_Types) do validSubwayStations[i] = 1; end
-for k,i in pairs(Encampment_Types) do validSubwayStations[i] = 1; end
-for k,i in pairs(Entertainment_Types) do validSubwayStations[i] = 1; end
+for k,i in pairs(IZ_Types) do table.insert(validSubwayStations, i); end
+for k,i in pairs(Campus_Types) do table.insert(validSubwayStations, i); end
+for k,i in pairs(Theater_Types) do table.insert(validSubwayStations, i); end
+for k,i in pairs(Commercial_Types) do table.insert(validSubwayStations, i); end
+for k,i in pairs(Holysite_Types) do table.insert(validSubwayStations, i); end
+for k,i in pairs(Neighborhood_Types) do table.insert(validSubwayStations, i); end
+for k,i in pairs(Encampment_Types) do table.insert(validSubwayStations, i); end
+for k,i in pairs(Entertainment_Types) do table.insert(validSubwayStations, i); end
 
 local GameSpeedType = GameConfiguration.GetGameSpeedType()
 local RsrcMultiplier = math.floor(GameInfo.GameSpeeds[GameSpeedType].CostMultiplier / 50)
@@ -184,8 +185,14 @@ function OnBuildingConstructed(playerID, cityID, buildingID, plotID, bOriginalCo
 				CreateRailroadAt(actPlot)
 				--local disconnectedCities = FindDisconnectedCities(areaID, playerID)
 			else
-				CreateRailroadAt(actPlot)
-				StartTCRR(Map.GetPlotByIndex(TC_RR_Start), actPlot, playerID)
+				local TC_RR_End = player:GetProperty("TCRR_END")
+				if TC_RR_End == nil then
+					player:SetProperty("TCRR_END", actPlot:GetIndex())
+					CreateRailroadAt(actPlot)
+					StartTCRR(Map.GetPlotByIndex(TC_RR_Start), actPlot, playerID)
+				else
+					print("Judah activated extra times...Do nothing!")
+				end		
 			end
 		elseif (buildingID == iSubway) then
 			local city = CityManager.GetCity(playerID, cityID)
@@ -248,7 +255,6 @@ function OnLoad()
 		eventsLoaded = true
 	end
 end
---Events.LoadComplete.Add(OnLoad)
 GameEvents.OnGameTurnStarted.Add(OnLoad)
 
 -- #endregion
@@ -315,14 +321,18 @@ function CreateSubwayNetwork(city)
 	print("Building Subway Network!")
 	-- Find All Valid Stations
 	local Stations = {};
-	for k,district in pairs(Districts) do
-		if validSubwayStations[district:GetType()] == 1 then
-			table.insert(Stations, plot)
+	for k,v in ipairs(validSubwayStations) do
+		print(k..","..v)
+		dist = Districts:GetDistrictByType(v)
+		if dist ~= nil then
+			plotX = dist:GetX()
+			plotY = dist:GetY()
+			table.insert(Stations, Map.GetPlot(plotX, plotY))
 		end
 	end
 
-	for i = 1, #Stations do
-		ConnectRailroadToNearest(Stations[i], 3)
+	for k,plot in pairs(Stations) do
+		ConnectRailroadToNearest(plot, 3)
 	end
 end
 
@@ -923,7 +933,7 @@ function ConnectRailroadToNearest(fromPlot : object, range)
 
 				for k,routePlot in pairs(routesInRange) do
 					if routePlot:GetOwner() == owningPlayer then
-						local path, cost = GetLandRoute(fromPlot, routePlot, range)
+						local path, cost = GetRailroadRoute(fromPlot, routePlot, range)
 						if (#(path) > 0 and cost < minCost) then
 							fastPath = path 
 							minCost = cost
@@ -931,8 +941,9 @@ function ConnectRailroadToNearest(fromPlot : object, range)
 					end
 				end
 				if fastPath ~= nil then
+					CreateRailroadAt(fromPlot)
 					for k, tile in pairs(fastPath) do
-						CreateRailroadAt(tile)
+						CreateRailroadAt(Map.GetPlotByIndex(tile))
 					end
 				else
 					print("No connections could be made :/")
@@ -986,7 +997,150 @@ function printArgTable(argTable)
 		end
 	end
 end
-
 -- #endregion
+
+
+-- #region Plot Iterator Functions
+-- Author: whoward69; URL: https://forums.civfanatics.com/threads/border-and-area-plot-iterators.474634/
+-- convert funcs odd-r offset to axial. URL: http://www.redblobgames.com/grids/hexagons/
+-- here grid == offset; hex == axial
+function ToHexFromGrid(grid)
+	local hex = {
+		x = grid.x - (grid.y - (grid.y % 2)) / 2;
+		y = grid.y;
+	}
+	return hex
+end
+function ToGridFromHex(hex_x, hex_y)
+	local grid = {
+		x = hex_x + (hex_y - (hex_y % 2)) / 2;
+		y = hex_y;
+	}
+	return grid.x, grid.y
+end
+
+SECTOR_NONE = nil
+SECTOR_NORTH = 1
+SECTOR_NORTHEAST = 2
+SECTOR_SOUTHEAST = 3
+SECTOR_SOUTH = 4
+SECTOR_SOUTHWEST = 5
+SECTOR_NORTHWEST = 6
+
+DIRECTION_CW = false
+DIRECTION_CCW = true
+
+DIRECTION_OUT = false
+DIRECTION_IN = true
+
+CENTRE_INCLUDE = true
+CENTRE_EXCLUDE = false
+
+function PlotRingIterator(pPlot, r, sector, anticlock)
+	-- print(string.format("PlotRingIterator((%i, %i), r=%i, s=%i, d=%s)", pPlot:GetX(), pPlot:GetY(), r, (sector or SECTOR_NORTH), (anticlock and "rev" or "fwd")))
+	-- The important thing to remember with hex-coordinates is that x+y+z = 0
+	-- so we never actually need to store z as we can always calculate it as -(x+y)
+	-- See http://keekerdc.com/2011/03/hexagon-grids-coordinate-systems-and-distance-calculations/
+
+	if (pPlot ~= nil and r > 0) then
+		local hex = ToHexFromGrid({x=pPlot:GetX(), y=pPlot:GetY()})
+		local x, y = hex.x, hex.y
+
+		-- Along the North edge of the hex (x-r, y+r, z) to (x, y+r, z-r)
+		local function north(x, y, r, i) return {x=x-r+i, y=y+r} end
+		-- Along the North-East edge (x, y+r, z-r) to (x+r, y, z-r)
+		local function northeast(x, y, r, i) return {x=x+i, y=y+r-i} end
+		-- Along the South-East edge (x+r, y, z-r) to (x+r, y-r, z)
+		local function southeast(x, y, r, i) return {x=x+r, y=y-i} end
+		-- Along the South edge (x+r, y-r, z) to (x, y-r, z+r)
+		local function south(x, y, r, i) return {x=x+r-i, y=y-r} end
+		-- Along the South-West edge (x, y-r, z+r) to (x-r, y, z+r)
+		local function southwest(x, y, r, i) return {x=x-i, y=y-r+i} end
+		-- Along the North-West edge (x-r, y, z+r) to (x-r, y+r, z)
+		local function northwest(x, y, r, i) return {x=x-r, y=y+i} end
+
+		local side = {north, northeast, southeast, south, southwest, northwest}
+		if (sector) then
+			for i=(anticlock and 1 or 2), sector, 1 do
+				table.insert(side, table.remove(side, 1))
+			end
+		end
+
+		-- This coroutine walks the edges of the hex centered on pPlot at radius r
+		local next = coroutine.create(function ()
+			if (anticlock) then
+				for s=6, 1, -1 do
+					for i=r, 1, -1 do
+						coroutine.yield(side[s](x, y, r, i))
+					end
+				end
+			else
+				for s=1, 6, 1 do
+					for i=0, r-1, 1 do
+						coroutine.yield(side[s](x, y, r, i))
+					end
+				end
+			end
+
+			return nil
+		end)
+
+		-- This function returns the next edge plot in the sequence, ignoring those that fall off the edges of the map
+		return function ()
+			local pEdgePlot = nil
+			local success, hex = coroutine.resume(next)
+			-- if (hex ~= nil) then print(string.format("hex(%i, %i, %i)", hex.x, hex.y, -1 * (hex.x+hex.y))) else print("hex(nil)") end
+
+			while (success and hex ~= nil and pEdgePlot == nil) do
+				pEdgePlot = Map.GetPlot(ToGridFromHex(hex.x, hex.y))
+				if (pEdgePlot == nil) then success, hex = coroutine.resume(next) end
+			end
+
+			return success and pEdgePlot or nil
+		end
+	else
+		-- Iterators have to return a function, so return a function that returns nil
+		return function () return nil end
+	end
+end
+
+
+function PlotAreaSpiralIterator(pPlot, r, sector, anticlock, inwards, centre)
+	-- print(string.format("PlotAreaSpiralIterator((%i, %i), r=%i, s=%i, d=%s, w=%s, c=%s)", pPlot:GetX(), pPlot:GetY(), r, (sector or SECTOR_NORTH), (anticlock and "rev" or "fwd"), (inwards and "in" or "out"), (centre and "yes" or "no")))
+	-- This coroutine walks each ring in sequence
+	local next = coroutine.create(function ()
+		if (centre and not inwards) then
+			coroutine.yield(pPlot)
+		end
+
+		if (inwards) then
+			for i=r, 1, -1 do
+				for pEdgePlot in PlotRingIterator(pPlot, i, sector, anticlock) do
+					coroutine.yield(pEdgePlot)
+				end
+			end
+		else
+			for i=1, r, 1 do
+				for pEdgePlot in PlotRingIterator(pPlot, i, sector, anticlock) do
+					coroutine.yield(pEdgePlot)
+				end
+			end
+		end
+
+		if (centre and inwards) then
+			coroutine.yield(pPlot)
+		end
+
+		return nil
+	end)
+
+	-- This function returns the next plot in the sequence
+	return function ()
+		local success, pAreaPlot = coroutine.resume(next)
+		return success and pAreaPlot or nil
+	end
+end
+
+-- #endregion End of iterator code --------------------
 
 print("RAILWAYS ENGINEERED.");

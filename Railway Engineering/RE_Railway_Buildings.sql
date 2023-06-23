@@ -22,7 +22,7 @@ INSERT INTO Buildings
                 (   BuildingType,              Name,                            Description,                            PrereqDistrict,
                     Cost,            PurchaseYield,              Maintenance,   PrereqTech,                 MaxPlayerInstances   )
 VALUES          (   'BUILDING_TCRR_STATION',   'LOC_BUILDING_TCRR_STATION_NAME','LOC_BUILDING_TCRR_STATION_DESCRIPTION','DISTRICT_CITY_CENTER',
-                    '500',           'YIELD_PRODUCTION',         '2',           'TECH_ECONOMICS',           '2'                  );
+                    '350',           'YIELD_PRODUCTION',         '2',           'TECH_ECONOMICS',           '2'                  );
 
 -- SUBWAY NETWORK
 INSERT INTO Buildings   
@@ -31,7 +31,7 @@ INSERT INTO Buildings
                 )
 VALUES
                 (   'BUILDING_SUBWAY_NETWORK', 'LOC_BUILDING_SUBWAY_NAME',      'LOC_BUILDING_SUBWAY_DESCRIPTION',      'DISTRICT_CITY_CENTER',
-                    '450',      '1',           'YIELD_PRODUCTION',              'ADVISOR_GENERIC',  '5',                'TECH_ELECTRICITY'
+                    '550',      '1',           'YIELD_PRODUCTION',              'ADVISOR_GENERIC',  '5',                'TECH_ELECTRICITY'
                 );
 
 INSERT INTO BuildingPrereqs ( Building, PrereqBuilding ) VALUES ( 'BUILDING_TCRR_STATION', 'BUILDING_RAILYARD' );
@@ -72,15 +72,15 @@ VALUES                                      (  'RAILYARD_ADDTRADEROUTE',        
                                             (  'RAILYARD_ADJUST_STOCKPILE',                'Amount',            '10'                    ),
                                             (  'TCSTATION_ADJUST_TOURISM',                 'Religious',         '0'                     ),
                                             (  'TCSTATION_ADJUST_TOURISM',                 'ScalingFactor',     '150'                   ),
-                                            (  'SUBWAY_ADJUST_CULTURE',                    'Amount',            '5'                     ),
+                                            (  'SUBWAY_ADJUST_CULTURE',                    'Amount',            '10'                    ),
                                             (  'SUBWAY_ADJUST_CULTURE',                    'YieldType',         'YIELD_CULTURE'         ),
-                                            (  'SUBWAY_ADJUST_SCIENCE',                    'Amount',            '5'                     ),
+                                            (  'SUBWAY_ADJUST_SCIENCE',                    'Amount',            '10'                    ),
                                             (  'SUBWAY_ADJUST_SCIENCE',                    'YieldType',         'YIELD_SCIENCE'         ),
-                                            (  'SUBWAY_ADJUST_PRODUCTION',                 'Amount',            '5'                     ),
+                                            (  'SUBWAY_ADJUST_PRODUCTION',                 'Amount',            '10'                    ),
                                             (  'SUBWAY_ADJUST_PRODUCTION',                 'YieldType',         'YIELD_PRODUCTION'      ),
-                                            (  'SUBWAY_ADJUST_FAITH',                      'Amount',            '5'                     ),
+                                            (  'SUBWAY_ADJUST_FAITH',                      'Amount',            '10'                    ),
                                             (  'SUBWAY_ADJUST_FAITH',                      'YieldType',         'YIELD_FAITH'           ),
-                                            (  'SUBWAY_ADJUST_GOLD',                       'Amount',            '5'                     ),
+                                            (  'SUBWAY_ADJUST_GOLD',                       'Amount',            '10'                    ),
                                             (  'SUBWAY_ADJUST_GOLD',                       'YieldType',         'YIELD_GOLD'            );
 
 -- REQUIREMENTS

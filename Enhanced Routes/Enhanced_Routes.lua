@@ -3,7 +3,7 @@
 -- DateCreated: 7/22/2022 19:35:45
 --------------------------------------------------------------
 
-print("ENHANCING ROUTES!! 18:36");
+print("ENHANCING ROUTES!! 062223");
 
 include "Enhanced_Routes_Config.lua";
 include "SupportFunctions.lua";
@@ -200,8 +200,9 @@ function OnRouteAdded(iX, iY)
 	end
 end
 
-Events.LoadComplete.Add(
-	function()
+local eventsLoaded = false
+function OnLoad()
+	if (not(eventsLoaded)) then
 		Events.UnitMoved.Add(OnUnitMoved);
 		Events.RouteAddedToMap.Add(OnRouteAdded);
 
@@ -219,8 +220,11 @@ Events.LoadComplete.Add(
 			print("Connect Cities ENABLED")
 			Events.CityAddedToMap.Add(OnCityAdded)
 		end
+
+		eventsLoaded = true
 	end
-)
+end
+GameEvents.OnGameTurnStarted.Add(OnLoad)
 
 -- #endregion
 

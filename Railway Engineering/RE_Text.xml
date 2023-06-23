@@ -35,7 +35,7 @@
 		</Row>
 
 		<Row Tag="LOC_BUILDING_SUBWAY_DESCRIPTION" Language="en_US">
-			<Text>Completing the Subway Network will connect all completed districts in the city by railroads. Additionally, the city will recieve a 5% bonus to each yield if it contains a district of the appropriate type.</Text>
+			<Text>Completing the Subway Network will connect all completed districts in the city by railroads. Additionally, the city will recieve a 10% bonus to each yield if it contains a district of the appropriate type.</Text>
 		</Row>
 
 	</LocalizedText>

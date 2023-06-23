@@ -117,31 +117,269 @@ print("Improvement Threshold = "..AutoImproveThreshold);
 -- #endregion
 
 -- ===========================================================================
--- #region DEVELOPMENT MANAGEMENT
+-- #region PRIMARY EVENT HANDLER
 -- ===========================================================================
 
-NewGrowthProperty("Development", Threshold, CalculateDevGrowth, ImprovementTrigger)
+function OnPlayerTurnStarted(playerID:number, isFirstTime)
+	local currentGameTurn = Game.GetCurrentGameTurn()
 
-function ImprovementTrigger(plotID : number)
-	if plotID ~= nil then
-		if type(plotID) == "number" then pPlot = Map.GetPlotByIndex(plotID); end
-		
-		local improved = TryMakeImprovement(pPlot, GetAutoImprovementType(pPlot), false)
-		--local improved = TryMakeImprovement(pPlot, GetAutoImprovementType(pPlot), IsAquacultureAvailable(city))
+	if notNilOrNegative(playerID) then
+		TryPlayerImprovements(playerID, currentGameTurn)
+	end
+end
+GameEvents.PlayerTurnStarted.Add(OnPlayerTurnStarted);
 
-		if not(improved) then
-			-- Delay 5 turns (modified by game speed) before trying again
-			local nextAttempt = turn + (5 * TurnMultiplier)
-			UpdateImprovementTables(playerID, plotID, nextAttempt)
+--[[
+if Debugging then
+	-- Pillage Testing
+	if BurnMePlease and Barbing then
+		if currentGameTurn >= BarbSpawnTurn then
+			SpawnBarbOnPlot(BarbSpawnPlot);
+			Barbing = false;
+		end
+	end
+end
+]]
+
+-- #endregion
+
+-- ===========================================================================
+-- #region STATE TABLE MANAGEMENT
+-- ===========================================================================
+
+function GetTurnTable(player)
+	return player:GetProperty("AUTO_IMPROVE_TURN_TABLE")
+end
+function GetPlotTable(player)
+	return player:GetProperty("AUTO_IMPROVE_PLOT_TABLE")
+end
+function GetTables(player : object)
+	--print("Getting Tables")
+	if player ~= nil then
+		return GetTurnTable(player), GetPlotTable(player)
+	end
+	return nil, nil
+end
+
+function SetTables(player, TurnTable, PlotTable)
+	--print("Setting Tables")
+	if player ~= nil then
+		player:SetProperty("AUTO_IMPROVE_TURN_TABLE", TurnTable)
+		player:SetProperty("AUTO_IMPROVE_PLOT_TABLE", PlotTable)
+	end
+end
+
+function RemovePlotFromTables(playerID : number, plotID : number)
+	printIfPlayer(playerID, "Removing Plot: "..plotID)
+	if notNilOrNegative(plotID) and notNilOrNegative(playerID) then
+		local player = Players[playerID]
+		local TurnTable, PlotTable = GetTables(player)
+
+		if PlotTable ~= nil and TurnTable ~= nil then
+			if PlotTable[plotID] ~= nil then
+				local turn = table.remove(PlotTable, plotID)
+				if TurnTable[turn] ~= nil then
+					if TurnTable[turn][plotID] ~= nil then TurnTable[turn][plotID] = nil; end
+					SetTables(player, TurnTable, PlotTable)
+				end
+			end
 		end
 	end
 end
 
-function CalculateDevGrowth(plotID : number)
-	--print("Calculating Growth")
-	if plotID ~= nil then
-		if type(plotID) == "number" then plot = Map.GetPlotByIndex(plotID); end
+function UpdateImprovementTables(playerID:number, plotID:number, turn:number)
+	printIfPlayer(playerID, "Updating Tables")
+	if notNilOrNegative(playerID) and notNilOrNegative(plotID) and notNilOrNegative(turn) then
+		if turn == nil then print("Turn was nil, wtf"); end
+		local player = Players[playerID]
+
+		local TurnTable, PlotTable = GetTables(player)
 		
+		if TurnTable == nil then TurnTable = {}; end
+		if PlotTable == nil then PlotTable = {}; end
+
+		if PlotTable[plotID] ~= nil then
+			-- Need to remove the old entry in the TurnTable first by setting it nil
+			local OldTurn = PlotTable[plotID]
+			if TurnTable[OldTurn] ~= nil then
+				TurnTable[OldTurn][plotID] = nil
+			end
+		end
+
+		PlotTable[plotID] = turn
+		if TurnTable[turn] == nil then TurnTable[turn] = {}; end
+		TurnTable[turn][plotID] = true
+
+		SetTables(player, TurnTable, PlotTable)
+	else
+		print("Bad args to function: <UpdateImprovementTables>")
+	end
+end
+
+function ChangePlotOwner(plotID, newOwnerID, oldOwnerID)
+	printIfPlayer(oldOwnerID, "Changing Owner from "..newOwnerID.." to "..oldOwnerID)
+	if not(plotID == nil or newOwnerID == nil or oldOwnerID == nil) then
+		local newOwner = Players[newOwnerID]
+		local oldOwner = Players[oldOwnerID]
+
+		--local newTurnTable, newPlotTable = GetTables(newOwner)
+		local oldTurnTable, oldPlotTable = GetTables(oldOwner)
+
+		if oldPlotTable ~= nil then
+			if oldPlotTable[plotID] ~= nil then
+				-- Get the turn
+				local turn = oldPlotTable[plotID]
+				UpdateImprovementTables(newOwnerID, plotID, turn)
+				RemovePlotFromTables(oldOwnerID, plotID)
+			else
+				-- Initialize the plot
+				InitializePlot(Map.GetPlotByIndex(plotID))
+			end
+		end
+
+		-- Update the current owner
+		local plot = Map.GetPlotByIndex(plotID)
+		local DevData = GetPlotDevData(plot)
+		DevData.Owner = newOwner
+		SetPlotDevData(plot, DevData)
+	end
+end
+
+function RemoveCityFromPlayer(playerID : number, city : object)
+	printIfPlayer(playerID, "Removing City")
+	for k,plot in orderedPairs(city:GetOwnedPlots()) do
+		RemovePlotFromTables(playerID, plot:GetIndex())
+	end
+end
+
+function InitializePlotDevData(pPlot : object)
+	--print("Initializing Dev Data")
+	if pPlot ~= nil then
+		--print("Initializing plot: "..pPlot:GetIndex())
+		-- Initialize the table		
+		local growth = CalculateDevGrowth(pPlot)
+
+		newDevData = {
+			Development = 0,
+			Growth 		= growth,
+			LastUpdate 	= Game.GetCurrentGameTurn(),
+			ImprovesOn 	= -1,
+			Owner		= pPlot:GetOwner()
+		};
+
+		newDevData = CalculateImprovementTurn(newDevData)
+		
+		SetPlotDevData(pPlot, newDevData)
+
+		return newDevData
+	end
+end
+
+function SetPlotDevData(pPlot:object, newData:table)
+	--print("Setting Dev Data")
+	if pPlot ~= nil then
+		pPlot:SetProperty("DEVELOPMENT_DATA", newData)
+	end
+end
+
+function GetPlotDevData(pPlot:object)
+	--print("Getting Dev Data")
+	if pPlot ~= nil then
+		local data = pPlot:GetProperty("DEVELOPMENT_DATA")
+		if data == nil then data = InitializePlotDevData(pPlot); end
+		return data
+	end
+	return nil
+end
+
+-- #endregion
+
+-- ===========================================================================
+-- #region DEVELOPMENT MANIPULATION
+-- ===========================================================================
+
+function UpdatePlot(pPlot : object)
+	if pPlot ~= nil then
+		printIfPlayer(pPlot:GetOwner(), "Updating Plot "..pPlot:GetIndex())
+		local DevData = GetPlotDevData(pPlot)
+		DevData = CalculateImprovementTurn(DevData, CalculateDevGrowth(pPlot))
+		SetPlotDevData(pPlot, DevData)
+
+		local prevOwner = DevData.Owner
+		local currOwner = pPlot:GetOwner()
+		if prevOwner ~= currOwner then ChangePlotOwner(pPlot:GetIndex(), currOwner, prevOwner); end
+
+		-- We can update the tables for the owning player as well
+		if notNilOrNegative(currOwner) then
+			UpdateImprovementTables(currOwner, pPlot:GetIndex(), DevData.ImprovesOn)
+		else
+			-- no owner, what should we do?
+		end
+	else
+		print("ERROR!!! Tried to update a plot, but it was nil!")
+	end
+end
+
+function GetTilesToImprove(playerID:number, turn:number)
+	local player = Players[playerID]
+	local TurnTable = GetTurnTable(player)
+	
+	local plots = {}
+	if TurnTable ~= nil then
+		if TurnTable[turn] ~= nil then
+			local PlotTable = GetPlotTable(player)
+			-- Remove the entry for this turn
+			local TurnEntry = table.remove(TurnTable, turn)
+			if TurnEntry ~= nil then
+				for k,_ in pairs(TurnEntry) do
+					table.insert(plots, Map.GetPlotByIndex(k))
+					-- Remove the plot from the map
+					table.remove(PlotTable, k)
+				end
+				-- Update the tables
+				SetTables(player, TurnTable, PlotTable)
+			else
+				printIfPlayer(playerID, "Turn Entry was nil")
+			end
+		else
+			printIfPlayer(playerID, "No entry found in the turn table for turn: "..turn)
+		end
+	else
+		printIfPlayer(playerID, "Turn table was nil")
+	end
+
+	return plots
+end
+
+function TryPlayerImprovements(playerID:number)
+	printIfPlayer(playerID, "=====TRYING TO IMPROVE=====")
+	local turn = Game.GetCurrentGameTurn()
+	printIfPlayer(playerID, "Player: "..playerID.."   Turn: "..turn)
+
+	local potentials = GetTilesToImprove(playerID, turn)
+	if #(potentials) > 0 then
+		for _,pPlot in pairs(potentials) do
+			local plotID = pPlot:GetIndex()
+			local city = Cities.GetPlotWorkingCity(plotID)
+			local improved = TryMakeImprovement(pPlot, GetAutoImprovementType(pPlot), false)
+			--local improved = TryMakeImprovement(pPlot, GetAutoImprovementType(pPlot), IsAquacultureAvailable(city))
+
+			if not(improved) then
+				-- Delay 5 turns (modified by game speed) before trying again
+				local nextAttempt = turn + (5 * TurnMultiplier)
+				UpdateImprovementTables(playerID, plotID, nextAttempt)
+			end
+		end
+	else
+		printIfPlayer(playerID, "No improvements to be made")
+	end
+
+	printIfPlayer(playerID, "=====DONE TRYING=====")
+end
+
+function CalculateDevGrowth(plot : object)
+	--print("Calculating Growth")
+	if plot ~= nil then
 		-- Get plot details
 		local owner			= plot:GetOwner()
 		local workerCount	= plot:GetWorkerCount()
@@ -179,6 +417,40 @@ function CalculateDevGrowth(plotID : number)
 	end
 
 	return nil
+end
+
+function CalculateImprovementTurn(DevData, newGrowth)
+	local currentTurn = Game.GetCurrentGameTurn()
+	local growth = DevData.Growth
+
+	-- Check to see if the Development value needs an update with the old growth value
+	-- before checking to see if theres a change in growth
+	if currentTurn ~= DevData.LastUpdate then
+		local currentDev = DevData.Development;
+		local timeSinceLastUpdate = currentTurn - DevData.LastUpdate;
+		DevData.Development = currentDev + (timeSinceLastUpdate * growth);
+		DevData.LastUpdate = currentTurn;
+	end
+
+	-- if the arg newGrowth is nil we just use the current growth
+	if newGrowth ~= nil then growth = newGrowth; end
+
+	local ImprovementTurn = nil
+	if growth <= 0 then
+		ImprovementTurn = math.huge
+	else
+		-- Get the difference between the improvement threshold and the current utilization
+		local diff = Threshold - DevData.Development
+		-- Number of turns is the diff divided by the growth rounded up
+		local turns = math.ceil(diff / growth)
+		-- And so the expected improvement turn is the number of turns plus the current turn
+		ImprovementTurn = currentTurn + turns
+	end
+
+	DevData.ImprovesOn = ImprovementTurn
+	DevData.Growth = growth
+
+	return DevData
 end
 
 -- #endregion
@@ -354,20 +626,30 @@ end
 
 -- CITY EVENTS
 
+Events.CityTileOwnershipChanged.Add( function (ownerID, cityID, iX, iY)
+	--print("City Tile Ownership Changed")
+	UpdatePlot(Map.GetPlot(iX, iY))
+end );
+--]]
+
+Events.CityTransfered.Add( function (newOwner, newCityID, oldOwner)
+	RemoveCityFromPlayer(oldOwner, CityManager.GetCity(newOwner, newCityID))
+end );
+
+GameEvents.CityConquered.Add( function (newOwner, oldOwner, newCityID)
+	RemoveCityFromPlayer(oldOwner, CityManager.GetCity(newOwner, newCityID))
+end );
+
 Events.CityWorkerChanged.Add( function(ownerID, cityID, iX, iY)
 	print("Worker Changed")
-	local plotID = Map.GetPlot(iX, iY).GetIndex()
-
-	UpdatePlot("Development", plotID)
+	local plot = Map.GetPlot(iX, iY)
+	UpdatePlot(plot)
 end );
 
 -- DISTRICT UPDATES
 function OnDistrictAdded (playerID, districtID, cityID, X, Y, districtIndex, percentComplete)
 	print("District Added")
-	
-	local plotID = Map.GetPlot(X, Y).GetIndex()
-
-	UpdatePlot("Development", plotID)
+	RemovePlotFromTables(playerID, Map.GetPlot(X, Y):GetIndex())
 end
 
 Events.DistrictRemovedFromMap.Add(function (playerID, districtID, cityID, X, Y, districtIndex)
