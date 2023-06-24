@@ -11,6 +11,17 @@ print("ENGINEERING RAILWAYS!!! 062323")
 -- ===========================================================================
 include("SupportFunctions.lua");
 
+-- Features
+local iForest = GameInfo.Features["FEATURE_FOREST"].Index
+local iJungle = GameInfo.Features["FEATURE_JUNGLE"].Index
+local iMarsh = GameInfo.Features["FEATURE_MARSH"].Index
+local iFloodplains = GameInfo.Features["FEATURE_FLOODPLAINS"].Index
+local iVolcano = GameInfo.Features["FEATURE_VOLCANO"].Index
+-- Terrains
+local iSnow = GameInfo.Terrains["TERRAIN_SNOW"].Index
+local iSnowHills = GameInfo.Terrains["TERRAIN_SNOW_HILLS"].Index
+local iSnowMountain = GameInfo.Terrains["TERRAIN_SNOW_MOUNTAIN"].Index
+
 local iRailroad = GameInfo.Routes["ROUTE_RAILROAD"].Index
 local iTunnel = GameInfo.Improvements["IMPROVEMENT_MOUNTAIN_TUNNEL"].Index
 
@@ -209,11 +220,12 @@ function FindDisconnectedCities(areaID, playerID)
 	return cities
 end
 
-function OnPlayerTurnStart(playerID, isFirstTime)
-	if Players[playerID]:GetProperty("TCRR_DATA") ~= nil then
-		print("Transcontinental Railroad in progress for player "..playerID)
-		data = Players[playerID]:GetProperty("TCRR_DATA")
+function OnPlayerTurnStart(playerID)
+	data = Players[playerID]:GetProperty("TCRR_DATA")
 
+	if data ~= nil then
+		print("Transcontinental Railroad in progress for player "..playerID)
+		
 		local startProgress = data.progress
 
 		progress, building = ContinueTCRR(data, playerID)
@@ -541,6 +553,11 @@ function StartTCRR(StartPlot, EndPlot, playerID)
 		end
 	else
 		print("No route was found for the TCRR between the two cities :(")
+
+		local msgString = "Work could not begin!"
+		local sumString = "You built your second Transcontinental Railstation, but they could not be connected!"
+		local type = GameInfo.Notifications["NOTIFICATION_ROADS_UPGRADED"].Index;
+		NotificationManager.SendNotification(playerID, type, msgString, sumString, StartPlot:GetX(), StartPlot:GetY());
 	end
 end
 
@@ -575,9 +592,27 @@ function print_if_debugging(text)
 	end
 end
 
-local Minimize_River_Crossings = false
+------------- WEIGHT SETTINGS -------------
+local Base_Cost = 2
+
+-- Terrain
+local Hills_Cost = 4
+local Mountain_Cost = 6
+local Snow_Cost = 2
+
+-- Features
+local Forest_Cost = 1
+local Jungle_Cost = 2
+local Marsh_Cost = 3
+local Floodplains_Cost = 2
+
+-- Adjacency
+local River_Crossing_Cost = 4
+local Direction_Change_Cost = 4
+--------------------------------------------
 -- Searches for the fastest route over land from start to end within a specified range
 -- Returns a table of the plot indices (in reverse order) as well as the total move cost
+-- Attempts to maintain a straight course by weighting changes in direction heavier
 function GetRailroadRoute(startPlot : object, endPlot : object, range)
 	if startPlot ~= nil and endPlot ~= nil then
 		local startX = startPlot:GetX()
@@ -618,24 +653,57 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 		local ClosedList = {}
 
 		-- A* ALGORITHM HELPER FUNCTIONS --
-		local function CalcG(plot, initialCost, dirMatch)
+		local function CalcG(plot, initialCost, adjData)
 			local G = initialCost
 
+			local ePlotFeature = plot:GetFeatureType();
+            local ePlotTerrain = plot:GetTerrainType();
+
 			if plot:IsMountain() then
-				G = G + 6
+				G = G + Mountain_Cost
 			elseif plot:IsHills() then
-				G = G + 4
+				G = G + Hills_Cost
 			else
-				G = G + 2
+				G = G + Base_Cost
 			end
 
-			if not(dirMatch) then G = G + 2; end
+			local HasSnow = ePlotTerrain == iSnow or ePlotTerrain == iSnowHills or ePlotTerrain == iSnowMountain;
+            if HasSnow then G = G + Snow_Cost; end
+
+            if notNilOrNegative(ePlotFeature) then
+                if ePlotFeature == iForest then
+                    G = G + Forest_Cost
+                elseif ePlotFeature == iJungle then
+                    G = G + Jungle_Cost
+                elseif ePlotFeature == iMarsh then
+                    G = G + Marsh_Cost
+                elseif ePlotFeature == iFloodplains then
+                    G = G + Floodplains_Cost
+                end
+            end
+
+            if adjData.bDirectionChange then G = G + Direction_Change_Cost; end
+            if adjData.bRiverCrossing then newCost = newCost + River_Crossing_Cost; end
 
 			return G
 		end
 
+		-- Gets a table of adjacency data that's used in the open and update plot functions
+		local function GetAdjacencyInfo(i, pPlot, adjPlot, lastdir)
+			local crossesRiver = pPlot:IsRiverCrossingToPlot(adjPlot)
+			local dirMatches = i == lastdir
+
+			local adjacencyTable = {
+				bRiverCrossing = crossesRiver,
+				iDirection = i,
+				bDirectionChange = not(dirMatches)
+			}
+
+			return adjacencyTable
+		end
+
 		-- Adds a plot to the OpenList and calculates its G, H, and F values
-		local function OpenPlot(currPlot : object, initialCost, bIsStart, dir, dirMatch)
+		local function OpenPlot(currPlot : object, initialCost, bIsStart, adjData)
 			if currPlot ~= nil then
 				local plotOwner = currPlot:GetOwner()
 				-- For building the railroads, we care that its the correct owner or no owner
@@ -645,7 +713,7 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 
 					-- If it's not the starting plot, we care about the movement cost
 					if not(bIsStart) then
-						G = CalcG(currPlot, initialCost, dirMatch)
+						G = CalcG(currPlot, initialCost, adjData)
 					end
 					
 					local F = G + H
@@ -654,7 +722,7 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 
 					OpenList[plotID] = {}
 					OpenList[plotID].plot = currPlot
-					OpenList[plotID].dir = dir
+					OpenList[plotID].dir = adjData.iDirection
 					OpenList[plotID].G = G
 					OpenList[plotID].H = H
 					OpenList[plotID].F = F
@@ -669,29 +737,44 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 		end
 
 		-- Updates a plot in the OpenList if the newCost results in a lower F value
-		local function UpdatePlot(plot : object, newCost, newDir, dirMatch)
+		local function UpdatePlot(plot : object, newCost, adjData)
 			local plotIndex = plot:GetIndex()
 			-- See if the plot exists in the open list, but not the closed list
 			--if OpenList[plotIndex] ~= nil  and ClosedList[plotIndex] == nil then
-				local entry = OpenList[plotIndex]
-				local oldF = entry.F
-				local newG = CalcG(plot, newCost, dirMatch)
-				local newF = newG + entry.H
+			local entry = OpenList[plotIndex]
+			local oldF = entry.F
+			local newG = CalcG(plot, newCost, adjData)
+			local newF = newG + entry.H
 
-				if newF < oldF then
-					OpenList[plotIndex].G = newG
-					OpenList[plotIndex].F = newF
-					OpenList[plotIndex].dir = newDir
-
-					local printStr = "in dir: "
-					if dirMatch then printStr = "in M dir: "; end
-					print_if_debugging(">> Updated plot "..plotIndex.." <"..entry.H..", "..newG..", "..newF.."> "..printStr..newDir);
-				else
-					local printStr = "in dir: "
-					if dirMatch then printStr = "in M dir: "; end
-					print_if_debugging(">> No Update for "..plotIndex.." <"..entry.H..", "..newG..", "..newF.."> "..printStr..newDir);
-				end
+			if newF < oldF then
+				OpenList[plotIndex].G = newG
+				OpenList[plotIndex].F = newF
+				OpenList[plotIndex].dir = adjData.iDirection
+			end
 			--end
+		end
+
+		-- Used in ClosePlot() to check whether an adjacent plot is a valid candidate
+		local function AdjacentIsPlotValid(adjPlot)
+			if adjPlot ~= nil then
+				local adjIndex = adjPlot:GetIndex()
+				local adjX = adjPlot:GetX()
+				local adjY = adjPlot:GetY()
+				
+				local isVisible = localPlayerVis:IsRevealed(adjX, adjY)
+				local isVolcano = adjPlot:GetFeatureType() == iVolcano
+
+				-- Check if the plot is not water, a volcano, or a natural wonder
+				local invalidPlot = adjPlot:IsWater() or (adjPlot:IsImpassable() and not(adjPlot:IsMountain()) or isVolcano or adjPlot:IsNaturalWonder())
+				
+				-- Check validitiy, visibility, distance, and whether this plot is already in the closed list
+				local dist = Map.GetPlotDistance(startX, startY, adjX, adjY)
+				local isValid = not(invalidPlot) and ClosedList[adjIndex] == nil and dist <= range and isVisible
+
+				return isValid
+			end
+
+			return false
 		end
 
 		-- Closes out a plot and adds or updates each valid adjacent plot to the OpenList
@@ -712,31 +795,17 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 				local adjPlot = Map.GetAdjacentPlot(thisX, thisY, i)
 				--print_if_debugging("Checking adjacent plot "..adjPlot:GetIndex())
 
-
-				if adjPlot ~= nil then
-					local adjIndex = adjPlot:GetIndex()
-					local adjX = adjPlot:GetX()
-					local adjY = adjPlot:GetY()
-					local isVisible = localPlayerVis:IsRevealed(adjX, adjY)
-					local isVolcano = adjPlot:GetFeatureType() == GameInfo.Features["FEATURE_VOLCANO"].Index
-					-- Check if the plot is not water, impassable, or already closed
-					local dist = Map.GetPlotDistance(startX, startY, adjX, adjY)
-					local invalidPlot = adjPlot:IsWater() or (adjPlot:IsImpassable() and not(adjPlot:IsMountain()) or isVolcano or adjPlot:IsNaturalWonder())
-					local canOpen = not(invalidPlot) and ClosedList[adjIndex] == nil and dist <= range and isVisible
-
-					local dirMatches = i == thisDir
-
-					if canOpen then
-						if OpenList[adjIndex] == nil then
-							-- Plot is not in the open list, add it
-							OpenPlot(adjPlot, thisCost, false, i, dirMatches)
-						else
-							-- Plot is in the open list, update it
-							UpdatePlot(adjPlot, thisCost, i, dirMatches)
-						end
+				local dirMatches = i == thisDir
+				if AdjacentIsPlotValid(adjPlot) then
+					if OpenList[adjIndex] == nil then
+						-- Plot is not in the open list, add it
+						OpenPlot(adjPlot, thisCost, false, GetAdjacencyInfo(i, plot, adjPlot, thisDir))
 					else
-						--print_if_debugging("Cannot open adjacent plot: "..i)
+						-- Plot is in the open list, update it
+						UpdatePlot(adjPlot, thisCost, GetAdjacencyInfo(i, plot, adjPlot, thisDir))
 					end
+				else
+					--print_if_debugging("Cannot open adjacent plot: "..i)
 				end
 			end
 		end
