@@ -87,6 +87,11 @@ print("Resource Multiplier = "..RsrcMultiplier)
 -- #region Event Handling
 -- ===========================================================================
 
+local function DebugTCRR(msg)
+	local debug = true
+	if debug then print(msg); end
+end
+
 function OnUnitAdded(playerID : number, unitID : number)
 	local unit = Players[playerID]:GetUnits():FindID(unitID)
 	if unit ~= nil then
@@ -176,8 +181,8 @@ function OnBuildingConstructed(playerID, cityID, buildingID, plotID, bOriginalCo
 			local plot = Map.GetPlotByIndex(plotID)
 			local city = CityManager.GetCity(playerID, cityID)
 			local cityPlot = Map.GetPlot(city:GetX(), city:GetY())
-
-			CreateRailroadFromTo(plot, cityPlot)
+			CreateRailroadAt(plot)
+			CreateRailroadFromTo(plot, cityPlot, 5)
 			--local player = Players[playerID]
 			-- Spawn a free railbuilder for the AI, because they probably won't build one themselves
 			--if player:IsAI() then
@@ -221,14 +226,15 @@ function FindDisconnectedCities(areaID, playerID)
 end
 
 function OnPlayerTurnStart(playerID)
-	data = Players[playerID]:GetProperty("TCRR_DATA")
+	local data = Players[playerID]:GetProperty("TCRR_DATA")
 
 	if data ~= nil then
-		print("Transcontinental Railroad in progress for player "..playerID)
+		print("Transcontinental Railroad in progress for player "..playerID..", Turn: ".. Game.GetCurrentGameTurn())
 		
 		local startProgress = data.progress
 
 		progress, building = ContinueTCRR(data, playerID)
+
 		plot = Map.GetPlotByIndex(data.PrevPlotF)
 		plotX = plot:GetX()
 		plotY = plot:GetY()
@@ -249,6 +255,8 @@ function OnPlayerTurnStart(playerID)
 			NotificationManager.SendNotification(playerID, type, msgString, sumString, plotX, plotY);
 			--print("Complete!")
 		end
+
+		DebugTCRR("TCRR Turn Complete")
 	end
 end
 
@@ -267,7 +275,7 @@ function OnLoad()
 		eventsLoaded = true
 	end
 end
-GameEvents.OnGameTurnStarted.Add(OnLoad)
+GameEvents.LoadGameViewStateDone.Add(OnLoad)
 
 -- #endregion
 
@@ -364,15 +372,20 @@ end
 function ExtendDirection(plot, prevPlot, bTunneling, playerID)
 	local tunnelling = bTunneling
 
+	DebugTCRR("Extending railroads")
 	if plot:IsMountain() then
 		-- Open a new tunnel if needed
+		DebugTCRR("Plot is a mountain")
 		if not(bTunneling) then
+			DebugTCRR("Starting a tunnel")
 			ImprovementBuilder.SetImprovementType(plot, iTunnel, playerID)
 			tunnelling = true
 		end
 	else
+		DebugTCRR("Plot is not a mountain")
 		-- Close the tunnel on the previous plot
 		if bTunneling then
+			DebugTCRR("Closing a tunnel")
 			ImprovementBuilder.SetImprovementType(prevPlot, iTunnel, playerID)
 		end
 		tunnelling = false
@@ -385,7 +398,7 @@ end
 function FinishTCRR(playerID, data, PlotF, PlotR)
 	PrevPlotF = Map.GetPlotByIndex(data.prevPlotF)
 	PrevPlotR = Map.GetPlotByIndex(data.prevPlotR)
-
+	DebugTCRR("Finishing TCRR")
 	if PlotR == nil then
 		if PrevPlotF == nil or PlotF == nil or PrevPlotR == nil then
 			print("Cannot finish TCRR, one or more required plots are nil")
@@ -457,7 +470,7 @@ function ContinueTCRR(data, playerID)
 		for i = 1,speed do
 			local route = data.Route
 			local remaining = #(route)
-
+			DebugTCRR("Count Remaining: "..remaining)
 			-- Break out if there isn't anything left to build
 			if remaining <= 0 then
 				-- Build complete
@@ -469,6 +482,7 @@ function ContinueTCRR(data, playerID)
 			local thisCost = RR_ResourceCost * 2
 			if remaining == 1 then thisCost = RR_ResourceCost; end
 
+			DebugTCRR("This cost = "..thisCost)
 			local playerIron = player:GetResources():GetResourceAmount("RESOURCE_IRON")
 			local playerCoal = player:GetResources():GetResourceAmount("RESOURCE_COAL")
 
@@ -493,6 +507,7 @@ function ContinueTCRR(data, playerID)
 					data.prevPlotR = Plot2:GetIndex()
 				end
 
+				DebugTCRR("Deducting Cost")
 				-- Deduct resources
 				player:GetResources():ChangeResourceAmount(iIron, -thisCost)
 				player:GetResources():ChangeResourceAmount(iCoal, -thisCost)
@@ -504,6 +519,7 @@ function ContinueTCRR(data, playerID)
 				SendLowResourceNotification(playerID, plot:GetX(), plot:GetY())
 			end
 
+			DebugTCRR("New Progress = "..(data.step/data.TotalLength)*100)
 			data.progress = (data.step/data.TotalLength)*100
 			data.Route = route
 
@@ -515,6 +531,8 @@ function ContinueTCRR(data, playerID)
 		else
 			player:SetProperty("TCRR_DATA", data)
 		end
+
+		DebugTCRR("TCRR Build Complete")
 
 		return data.progress, building
 	else
@@ -593,22 +611,22 @@ function print_if_debugging(text)
 end
 
 ------------- WEIGHT SETTINGS -------------
-local Base_Cost = 2
+local Base_Cost = 1
 
 -- Terrain
-local Hills_Cost = 4
-local Mountain_Cost = 6
+local Hills_Cost = 2
+local Mountain_Cost = 3
 local Snow_Cost = 2
 
 -- Features
 local Forest_Cost = 1
 local Jungle_Cost = 2
-local Marsh_Cost = 3
-local Floodplains_Cost = 2
+local Marsh_Cost = 2
+local Floodplains_Cost = 1
 
 -- Adjacency
-local River_Crossing_Cost = 4
-local Direction_Change_Cost = 4
+local River_Crossing_Cost = 2
+local Direction_Change_Cost = 2
 --------------------------------------------
 -- Searches for the fastest route over land from start to end within a specified range
 -- Returns a table of the plot indices (in reverse order) as well as the total move cost
@@ -683,7 +701,7 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
             end
 
             if adjData.bDirectionChange then G = G + Direction_Change_Cost; end
-            if adjData.bRiverCrossing then newCost = newCost + River_Crossing_Cost; end
+            if adjData.bRiverCrossing then G = G + River_Crossing_Cost; end
 
 			return G
 		end
@@ -705,6 +723,12 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 		-- Adds a plot to the OpenList and calculates its G, H, and F values
 		local function OpenPlot(currPlot : object, initialCost, bIsStart, adjData)
 			if currPlot ~= nil then
+				if adjData == nil then
+					adjData = {}
+					adjData.iDirection = 0
+					adjData.bRiverCrossing = false
+					adjData.bDirectionChange = false
+				end
 				local plotOwner = currPlot:GetOwner()
 				-- For building the railroads, we care that its the correct owner or no owner
 				if plotOwner == -1 or plotOwner == startPlot:GetOwner() then
@@ -728,8 +752,8 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 					OpenList[plotID].F = F
 
 					local printStr = "in dir: "
-					if dirMatch then printStr = "in M dir: "; end
-					print_if_debugging(">> Opened plot: "..plotID.." <"..H..", "..G..", "..F.."> "..printStr..dir);
+					--if dirMatch then printStr = "in M dir: "; end
+					print_if_debugging(">> Opened plot: "..plotID.." <"..H..", "..G..", "..F.."> "..printStr..adjData.iDirection);
 				end
 			else
 				print("ERROR: Why'd you try to add a nil plot to the open list?");
@@ -794,18 +818,19 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 			for i = 0, 5 do
 				local adjPlot = Map.GetAdjacentPlot(thisX, thisY, i)
 				--print_if_debugging("Checking adjacent plot "..adjPlot:GetIndex())
-
-				local dirMatches = i == thisDir
-				if AdjacentIsPlotValid(adjPlot) then
-					if OpenList[adjIndex] == nil then
-						-- Plot is not in the open list, add it
-						OpenPlot(adjPlot, thisCost, false, GetAdjacencyInfo(i, plot, adjPlot, thisDir))
+				if adjPlot ~= nil then
+					local adjIndex = adjPlot:GetIndex()
+					if AdjacentIsPlotValid(adjPlot) then
+						if OpenList[adjIndex] == nil then
+							-- Plot is not in the open list, add it
+							OpenPlot(adjPlot, thisCost, false, GetAdjacencyInfo(i, plot, adjPlot, thisDir))
+						else
+							-- Plot is in the open list, update it
+							UpdatePlot(adjPlot, thisCost, GetAdjacencyInfo(i, plot, adjPlot, thisDir))
+						end
 					else
-						-- Plot is in the open list, update it
-						UpdatePlot(adjPlot, thisCost, GetAdjacencyInfo(i, plot, adjPlot, thisDir))
+						--print_if_debugging("Cannot open adjacent plot: "..i)
 					end
-				else
-					--print_if_debugging("Cannot open adjacent plot: "..i)
 				end
 			end
 		end
@@ -843,7 +868,7 @@ function GetRailroadRoute(startPlot : object, endPlot : object, range)
 
 		-- BEGIN A* ALGORITHM --
 		-- Initialize the algorithm to our starting location
-		OpenPlot(startPlot, 0, true, -1, false)
+		OpenPlot(startPlot, 0, true, nil)
 
 		local searching = true
 		local routeFound = false
@@ -969,7 +994,13 @@ function CreateRailroadFromTo(fromPlot : object, toPlot : object, range)
 	local path, cost = GetRailroadRoute(fromPlot, toPlot, range)
 	if path ~= nil then
 		for k, tile in pairs(path) do
-			CreateRailroadAt(Map.GetPlotByIndex(tile))
+			plot = Map.GetPlotByIndex(tile)
+			if plot:IsMountain() then
+				ImprovementBuilder.SetImprovementType(plot, iTunnel, plot:GetOwner())
+			else
+				CreateRailroadAt(plot)
+			end
+			
 		end
 	end
 end

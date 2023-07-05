@@ -6,7 +6,7 @@
 -- INCLUDES
 -- ===========================================================================
 include "PlotTooltip_Expansion2";
-include "AutoImprovements_Config.lua";
+include "AutoImprovements_Config";
 
 -- ===========================================================================
 -- CACHE BASE FUNCTIONS
@@ -23,16 +23,11 @@ function FetchData(pPlot)
 	--print("Calling overridden data fetch");
 	local data = XP2_FetchData(pPlot);
 
-	local utilData = pPlot:GetProperty("DEVELOPMENT_DATA");
-	local util = 0
-	local growth = 0
-	if utilData ~= nil then
-		local util = utilData.Development
-		local growth = utilData.Growth
-	end
+	local UI_Data = ExposedMembers.TileGrowth.UI_GetData("Development", pPlot);
 	
-	data.Utilization = util;
-	data.Growth = growth;
+	data.Development = UI_Data[1];
+	data.Growth = UI_Data[2];
+	data.DevThreshold = UI_Data[3];
 
 	return data;
 end
@@ -41,21 +36,16 @@ function GetDetails(data)
 	--print("Calling overridden GetDetails()");
 	local details : table = XP2_GetDetails(data);
 
-	if (data.Owner == Game.GetLocalPlayer()) then
-		if data.Utilization == nil then
-			table.insert(details, "Development: 0% (0)");
-			table.insert(details, "Growth: 0% (0)");
-		else
-			-- Turn the utilization into a percent of the threshold
-			thold = 100;
-			if AutoImproveThreshold ~= nil then thold = AutoImproveThreshold; end
-			local percentUtil = math.floor((data.Utilization*100)/thold)
-			local percentGrowth = math.floor((data.Growth*100)/thold)
-			table.insert(details, Locale.Lookup("LOC_PLOT_DEVELOPMENT_TOOLTIP_TEXT", percentUtil, data.Utilization));
-			table.insert(details, Locale.Lookup("LOC_PLOT_UTIL_GROWTH_TOOLTIP_TEXT", percentGrowth, data.Growth));
-		end
-		--print("Tried to print something..."..data.Utilization);
-	end	
+	if data.Development == nil then
+		table.insert(details, Locale.Lookup("LOC_PLOT_DEVELOPMENT_TOOLTIP_TEXT", 0, 0));
+		table.insert(details, Locale.Lookup("LOC_PLOT_DEVELOPMENT_TOOLTIP_TEXT", 0, 0));
+	else
+		-- Turn the utilization into a percent of the threshold
+		local percentUtil = math.floor((data.Development*100)/data.DevThreshold)
+		local percentGrowth = math.floor((data.Growth*100)/data.DevThreshold)
+		table.insert(details, Locale.Lookup("LOC_PLOT_DEVELOPMENT_TOOLTIP_TEXT", percentUtil, data.Development));
+		table.insert(details, Locale.Lookup("LOC_PLOT_UTIL_GROWTH_TOOLTIP_TEXT", percentGrowth, data.Growth));
+	end
 	
 	return details;
 end

@@ -52,30 +52,24 @@ local function OnGetUtilPlotTable()
 
 	local mapWidth, mapHeight = Map.GetGridSize()
 	for i = 0, (mapWidth * mapHeight) - 1, 1 do
-        local plot:table = Map.GetPlotByIndex(i)
+        local pPlot = Map.GetPlotByIndex(i)
 
-        if localPlayerVis:IsRevealed(plot:GetX(), plot:GetY()) then
-            if plot:GetOwner() == localPlayer then
-                if plot:IsCity() then
-					table.insert(colorPlot[CityColor], plot:GetIndex())
-				elseif plot:GetImprovementType() >= 0 then
-					table.insert(colorPlot[ImprovementColor], plot:GetIndex())
-				else
-					local util = plot:GetProperty("DEVELOPMENT_DATA").Utilization
-					if util == nil then util = 0; end
-					
-					thold = 100;
-					if AutoImproveThreshold ~= nil then thold = AutoImproveThreshold; end
+        if localPlayerVis:IsRevealed(pPlot:GetX(), pPlot:GetY()) then
+			if pPlot:IsCity() then
+				table.insert(colorPlot[CityColor], pPlot:GetIndex())
+			elseif pPlot:GetImprovementType() >= 0 then
+				table.insert(colorPlot[ImprovementColor], pPlot:GetIndex())
+			else
+				local UI_Data = ExposedMembers.TileGrowth.UI_GetData("Development", pPlot);
 
-					local percentUtil = math.floor((util*100)/thold)
+				local percentUtil = math.floor((UI_Data[1]*100)/UI_Data[3])
 
-					local index = math.floor(percentUtil/20) + 1
-					if index < 1 then index = 1; end
-					if index > 5 then index = 5; end
-					
-					table.insert(colorPlot[ColorGradient[index]], plot:GetIndex())
-				end
-            end
+				local index = math.floor(percentUtil/20) + 1
+				if index < 1 then index = 1; end
+				if index > 5 then index = 5; end
+				
+				table.insert(colorPlot[ColorGradient[index]], pPlot:GetIndex())
+			end
         end
     end
 
@@ -99,37 +93,36 @@ local function OnGetGrowthPlotTable()
 
 	local mapWidth, mapHeight = Map.GetGridSize()
 	for i = 0, (mapWidth * mapHeight) - 1, 1 do
-        local plot:table = Map.GetPlotByIndex(i)
+        local pPlot = Map.GetPlotByIndex(i)
 
-        if localPlayerVis:IsRevealed(plot:GetX(), plot:GetY()) then
-            if plot:GetOwner() == localPlayer then
-                if plot:IsCity() then
-					table.insert(colorPlot[CityColor], plot:GetIndex())
+        if localPlayerVis:IsRevealed(pPlot:GetX(), pPlot:GetY()) then
+			if pPlot:IsCity() then
+				table.insert(colorPlot[CityColor], pPlot:GetIndex())
+			else
+				local index = 1
+				
+				local UI_Data = ExposedMembers.TileGrowth.UI_GetData("Development", pPlot);
+				if growth == nil then growth = 0; end
+
+				local dev_scalar = 100
+				if WTI_Config.DevelopmentScalar ~= nil then dev_scalar = WTI_Config.DevelopmentScalar; end
+
+				growth = UI_Data[2] / dev_scalar;
+
+				if growth < 0 then
+					index = 1
+				elseif growth == 0 then
+					index = 2
+				elseif growth < 4 then
+					index = 3
+				elseif growth < 8 then
+					index = 4
 				else
-					local index = 1
-					
-					local growth = plot:GetProperty("DEVELOPMENT_DATA").Growth
-					if growth == nil then 
-						growth = 0
-					else
-						growth = growth / UtilizationScalar;
-					end
-
-					if growth < 0 then
-						index = 1
-					elseif growth == 0 then
-						index = 2
-					elseif growth < 4 then
-						index = 3
-					elseif growth < 8 then
-						index = 4
-					else
-						index = 5
-					end
-
-					table.insert(colorPlot[ColorGradient[index]], plot:GetIndex())
+					index = 5
 				end
-            end
+
+				table.insert(colorPlot[ColorGradient[index]], pPlot:GetIndex())
+			end
         end
     end
 

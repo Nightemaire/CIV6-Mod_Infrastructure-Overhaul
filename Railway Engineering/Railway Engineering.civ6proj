@@ -48,7 +48,7 @@
     <Folder Include="Database" />
     <Folder Include="Scripts" />
     <Folder Include="Text" />
-    <None Include="Railway_Engineering.Art.xml" />
+    <None Include="Railway Engineering.Art.xml" />
     <Content Include="RE_BuildRailways.lua">
       <SubType>Content</SubType>
     </Content>

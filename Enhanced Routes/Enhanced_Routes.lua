@@ -40,6 +40,9 @@ local i_Railroad = GameInfo.Routes["ROUTE_RAILROAD"].Index;
 -- #region Event Handling
 -- ===========================================================================
 
+local function DebugRoutes(msg)
+	print(msg)
+end
 -- Makes sure that when the trader moves, the route becomes a primary route
 local m_eTrader : number = GameInfo.Units["UNIT_TRADER"].Index
 function OnUnitMoved(playerID:number, unitID, tileX, tileY)
@@ -47,6 +50,7 @@ function OnUnitMoved(playerID:number, unitID, tileX, tileY)
 	local unitType = unit:GetType()
 
 	if (unitType == m_eTrader) then
+		DebugRoutes("Trader moved")
 		local plot = Map.GetPlot(tileX, tileY)
 		if plot:GetProperty("RouteSubType") ~= 0 then
 			plot:SetProperty("RouteSubType", 1)
@@ -56,6 +60,7 @@ end
 
 -- Event handler if improvements are being connected
 function OnImprovementAdded(iX, iY, eImprovement, playerID)
+	DebugRoutes("Improvement Added")
 	local plot = Map.GetPlot(iX, iY)
 	local improvement = GameInfo.Improvements[eImprovement]
 	if improvement.Buildable then
@@ -157,7 +162,7 @@ end
 -- Sets the sub type on any route that gets created
 -- This also fires for each route in an empire when an era change occurs (since i think it just replaces all routes)
 function OnRouteAdded(iX, iY)
-	--print("A route was added at <"..iX..","..iY..">")
+	DebugRoutes("A route was added at <"..iX..","..iY..">")
 	local plot = Map.GetPlot(iX, iY)	
 	local routeType = plot:GetRouteType()
 	

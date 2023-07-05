@@ -16,17 +16,21 @@
 -- ===========================================================================
 -- #region INCLUDES
 -- ===========================================================================
-print("IMPROVING IMPROVEMENTS!!! 062223");
+print("IMPROVING IMPROVEMENTS!!! 062223_2234");
 
 include("SupportFunctions.lua");
-include("TileGrowthSystem.lua");
+include("TileGrowthSystem");
 include("AutoImprovements_Config.lua");
+
+--ExposedMembers.GameplayContext.TileGrowth
 
 -- #endregion
 
 -- ===========================================================================
 -- #region STATIC DEFINITIONS
 -- ===========================================================================
+local DevPropertyID = "Development"
+
 local GameSpeedType = GameConfiguration.GetGameSpeedType()
 local SpeedMultiplier = GameInfo.GameSpeeds[GameSpeedType].CostMultiplier;
 local TurnMultiplier = math.floor(GameInfo.GameSpeeds[GameSpeedType].CostMultiplier / 50)
@@ -63,6 +67,13 @@ local i_MedievalEra = GameInfo.Eras["ERA_MEDIEVAL"].Index;
 local i_IndustrialEra = GameInfo.Eras["ERA_MEDIEVAL"].Index;
 local i_Modern = GameInfo.Eras["ERA_MODERN"].Index;
 
+-- Yields
+local iFood = GameInfo.Yields["YIELD_FOOD"].Index
+local iProduction = GameInfo.Yields["YIELD_PRODUCTION"].Index
+local iFaith = GameInfo.Yields["YIELD_FAITH"].Index
+local iScience = GameInfo.Yields["YIELD_SCIENCE"].Index
+local iCulture = GameInfo.Yields["YIELD_CULTURE"].Index
+
 -- Build Valid Resource Improvement Table
 local ImprovementLUT = {}
 local NValids = #(GameInfo.Improvement_ValidResources);
@@ -81,11 +92,10 @@ local g_iW, g_iH = Map.GetGridSize();
 -- #region PARAMETERS
 -- ===========================================================================
 
-local DevelopmentWorked = Development_Bonus_If_Worked	-- FROM CONFIG
-local AllowAppealReduction = Allow_Appeal_Reduction		-- FROM CONFIG
-local Threshold = AutoImproveThreshold					-- FROM CONFIG
+local AllowAppealReduction = WTI_Config.Allow_Appeal_Reduction		-- FROM CONFIG
+local Threshold = WTI_Config.AutoImproveThreshold					-- FROM CONFIG
 
-DevelopmentMax = Threshold * 1.5
+DevelopmentMax = WTI_Config.BuildCityThreshold * 1.5
 
 -- #endregion
 
@@ -94,12 +104,12 @@ DevelopmentMax = Threshold * 1.5
 -- ===========================================================================
 local Debugging = false;			-- Because sometimes you just need to...
 local InstaImprove = true;			-- Supah speed
-local BurnMePlease = true;			-- Will spawn barbarians on recent improvements to test pillaging
+local BurnMePlease = false;			-- Will spawn barbarians on recent improvements to test pillaging
 
 if Debugging then
 	print("Debugging flag is enabled")
 	if InstaImprove then
-		DevelopmentScalar = DevelopmentScalar*10
+		DevelopmentScalar = DevelopmentScalar*5
 		print(" - Tiles will improve extra fast")
 	end
 	if BurnMePlease then
@@ -112,7 +122,7 @@ local BarbSpawnTurn = 0;
 local Barbing = false;
 local BarbSpawnPlot = nil;
 
-print("Improvement Threshold = "..AutoImproveThreshold);
+print("Improvement Threshold = "..WTI_Config.AutoImproveThreshold);
 
 -- #endregion
 
@@ -120,19 +130,24 @@ print("Improvement Threshold = "..AutoImproveThreshold);
 -- #region DEVELOPMENT MANAGEMENT
 -- ===========================================================================
 
-NewGrowthProperty("Development", Threshold, CalculateDevGrowth, ImprovementTrigger)
-
 function ImprovementTrigger(plotID : number)
 	if plotID ~= nil then
-		if type(plotID) == "number" then pPlot = Map.GetPlotByIndex(plotID); end
+		pPlot = Map.GetPlotByIndex(plotID)
+		CB_Method = pPlot:GetProperty("Development_CB_Method")
 		
-		local improved = TryMakeImprovement(pPlot, GetAutoImprovementType(pPlot), false)
-		--local improved = TryMakeImprovement(pPlot, GetAutoImprovementType(pPlot), IsAquacultureAvailable(city))
-
-		if not(improved) then
-			-- Delay 5 turns (modified by game speed) before trying again
-			local nextAttempt = turn + (5 * TurnMultiplier)
-			UpdateImprovementTables(playerID, plotID, nextAttempt)
+		if CB_Method ~= nil then
+			print("Trigger method: "..CB_Method)
+			if CB_Method == "ClaimTile" then
+				TryClaimTile(pPlot, playerID)
+			elseif CB_Method == "ImproveTile" then
+				TryMakeImprovement(pPlot, GetAutoImprovementType(pPlot), false)
+			elseif CB_Method == "BuildCity" then
+				TryBuildCity(pPlot, playerID)
+			else
+				print("No callback method implemented");
+			end
+		else
+			print("Callback method not defined")
 		end
 	end
 end
@@ -140,47 +155,79 @@ end
 function CalculateDevGrowth(plotID : number)
 	--print("Calculating Growth")
 	if plotID ~= nil then
-		if type(plotID) == "number" then plot = Map.GetPlotByIndex(plotID); end
+		plot = Map.GetPlotByIndex(plotID)
 		
-		-- Get plot details
-		local owner			= plot:GetOwner()
-		local workerCount	= plot:GetWorkerCount()
-		local appeal		= plot:GetAppeal()
-		local isFreshWater	= plot:IsFreshWater()
-		local hasRoute		= plot:IsRoute()
-		local yield			= plot:GetYield()	-- This sums all yields on the plot
-		--local distToCity	= FindClosestCity(iX, iY, 10)
+		if plot ~= nil then
+			-- Get plot details
+			local owner			= plot:GetOwner()
+			local workerCount	= plot:GetWorkerCount()
+			local appeal		= plot:GetAppeal()
+			local isFreshWater	= plot:IsFreshWater()
+			local hasRoute		= plot:IsRoute()
+			local yield			= plot:GetYield(iProduction) + plot:GetYield(iFood)
+			local city 			= Cities.GetPlotWorkingCity(plotID)
+			local distToCity = 5;
+			if city ~= nil then
+				distToCity	= Map.GetPlotDistance(plot:GetX(), plot:GetY(), city:GetX(), city:GetY())
+			end
 
-		-- Set the base growth to the tile's appeal (can be negative)
-		-- If negative appeal, and unworked, utilization will drop back to zero
-		local growth = appeal
+			-- Set the base growth to the tile's appeal (can be negative)
+			-- If negative appeal, and unworked, utilization will drop back to zero
+			local growth = appeal
 
-		-- Subtract how far the plot is from the city (if adjacent subtract nothing)
-		-- << SHOULD REPLACE THIS WITH A PATH DISTANCE THAT ACCOUNTS FOR ROUTES >>
-		--growth = growth - (distToCity - 1)
+			-- Subtract how far the plot is from the city (if adjacent subtract nothing)
+			-- << SHOULD REPLACE THIS WITH A PATH DISTANCE THAT ACCOUNTS FOR ROUTES >>
+			growth = growth - (distToCity - 1)
 
-		-- Growth from yields are fractional, but we want to take the floor anyway
-		growth = growth + math.floor(yield * GROWTH_YIELD)
+			-- Growth from yields can be fractional, but so we should floor the value
+			growth = growth + math.floor(yield * WTI_Config.GROWTH_YIELD)
 
-		-- Check for some other growths
-		if isFreshWater then growth = growth + GROWTH_FRESHWATER; end
-		if hasRoute then
-			local subType = plot:GetProperty("RouteSubType")
-			if subType == nil then subType = 3; end
-			-- Subtract the route subtype, primary routes add the most benefit
-			growth = growth + GROWTH_HASROUTE - subType
+			-- Check for some other growths
+			if isFreshWater then growth = growth + WTI_Config.GROWTH_FRESHWATER; end
+			if hasRoute then
+				local subType = plot:GetProperty("RouteSubType")
+				if subType == nil then subType = 1; end
+				-- Subtract the route subtype, primary routes add the most benefit
+				growth = growth + WTI_Config.GROWTH_HASROUTE - subType
+			end
+							
+			-- Add to the growth if the tile is being worked
+			if workerCount > 0 then growth = growth + WTI_Config.GROWTH_WORKED; end
+
+			-- Scale the growth so it is compatible with utilization
+			return growth * WTI_Config.DevelopmentScalar
 		end
-						
-		-- Add to the growth if the tile is being worked
-		if workerCount > 0 then growth = growth + DevelopmentWorked; end
-
-		-- Scale the growth so it is compatible with utilization
-		return growth * DevelopmentScalar
 	end
 
 	return nil
 end
 
+function OnPlotInitialized(PropertyID, plotID : number)
+	if PropertyID == DevPropertyID then
+		print("Responding to plot init")
+
+		local pPlot = Map.GetPlotByIndex(plotID)
+		-- Some simple cases to handle
+		if pPlot == nil then return; end
+		if pPlot:GetOwner() < 0 then 
+			plot:SetProperty("Development_CB_Method", "ClaimTile")
+			ChangeThreshold(PropertyID, plotID, WTI_Config.ExpansionThreshold)
+			return; 
+		end
+		if pPlot:GetOwner() > 0 then
+			for i = 0, 5 do
+				local adjPlot = Map.GetAdjacentPlot(pPlot:GetX(), pPlot:GetY(), i)
+				if adjPlot ~= nil then
+					local owner = adjPlot:GetOwner()
+					if owner < 0 then
+						UpdatePlot(PropertyID, adjPlot:GetIndex())
+					end
+				end
+			end
+		end`	
+	end
+end
+LuaEvents.OnPlotPropertyInitialized.Add(OnPlotInitialized)
 -- #endregion
 
 -- ===========================================================================
@@ -290,7 +337,39 @@ function IsAquacultureAvailable(City)
 	return false
 end
 
+function TryClaimTile(pPlot)
+	local AdjPlayerDev = {}
+	for i = 0, 5 do
+		local adjPlot = Map.GetAdjacentPlot(pPlot:GetX(), pPlot:GetY(), i)
+		local owner = adjPlot:GetOwner()
+		if owner >= 0 then
+			local playerDev = AdjPlayerDev[owner]
+			local plotDev = ReadValue(DevPropertyID)
+			if plotDev ~= nil then
+				if playerDev ~= nil then
+					AdjPlayerDev[owner] = plotDev
+				else
+					AdjPlayerDev[owner] = playerDev + plotDev
+				end
+			end
+		end
+	end
+
+	-- Claim the tile for whoever has the most adjacent development
+	local N_AdjPlayers = #AdjPlayerDev
+	if N_AdjPlayers == 0 then
+		return nil
+	elseif N_AdjPlayers == 1 then
+		pPlot:SetOwner(AdjPlayerDev[1])
+	else
+		print("There was a tie as to who claims the tile, it goes unclaimed!")
+		local plotID = pPlot:GetIndex()
+		SnoozeTrigger(DevPropertyID, plotID, 1)
+	end
+end
+
 function TryMakeImprovement(pPlot, eImprovementType, cityHasAquaculture)
+	local builtImprovement = false
 	if notNilOrNegative(eImprovementType) and pPlot ~= nil then
 		local plotX = pPlot:GetX()
 		local plotY = pPlot:GetY()
@@ -327,7 +406,7 @@ function TryMakeImprovement(pPlot, eImprovementType, cityHasAquaculture)
 					BarbSpawnPlot = plot;
 					BarbSpawnTurn = Game.GetCurrentGameTurn() + BarbSpawnDelay;
 				end
-				return true;
+				builtImprovement = true
 			else
 				printIfPlayer(iPlayer, "Failed to improve...");
 			end
@@ -337,8 +416,13 @@ function TryMakeImprovement(pPlot, eImprovementType, cityHasAquaculture)
 	else
 		printIfPlayer(iPlayer, "Improvement or plot wasn't defined properly");
 	end
+
+	if not(builtImprovement) then
+		-- Delay 5 turns (modified by game speed) before trying again
+		SnoozeTrigger(DevPropertyID, plotID, 5 * TurnMultiplier)
+	end
 	
-	return false;
+	return builtImprovement;
 end
 
 function TryRepairPlot(plot : object)
@@ -346,40 +430,93 @@ function TryRepairPlot(plot : object)
 	ImprovementBuilder.SetImprovementPillaged(pPlot, false)
 end
 
+function TryBuildCity(pPlot, playerID)
+	
+end
+
 -- #endregion
 
 -- ===========================================================================
--- #region SECONDARY EVENT HANDLERS
+-- #region EVENT HANDLERS
 -- ===========================================================================
 
--- CITY EVENTS
+function RegisterAllEvents()
+	-- Several events call the same function, so we can set them in a loop
+	local PlotRecalcGrowthEvents = {
+		Events.PlotAppealChanged,
+		--Events.PlotPropertyChanged,
+		Events.PlotYieldChanged,
+		Events.FeatureRemovedFromMap,
+		Events.FeatureAddedToMap,
+		Events.ResourceAddedToMap,
+		Events.ResourceRemovedFromMap
+	}
 
-Events.CityWorkerChanged.Add( function(ownerID, cityID, iX, iY)
-	print("Worker Changed")
-	local plotID = Map.GetPlot(iX, iY).GetIndex()
+	if #PlotRecalcGrowthEvents > 0 then
+		for _,event in pairs(PlotRecalcGrowthEvents) do
+			event.Add(OnPlotChangeEvent)
+		end
+	end
 
-	UpdatePlot("Development", plotID)
-end );
+	Events.CityAddedToMap.Add(CityAdded)
+	Events.CityWorkerChanged.Add(OnCityTileChanged)
+	Events.CityTileOwnershipChanged.Add(OnCityTileChanged)
 
--- DISTRICT UPDATES
-function OnDistrictAdded (playerID, districtID, cityID, X, Y, districtIndex, percentComplete)
-	print("District Added")
-	
-	local plotID = Map.GetPlot(X, Y).GetIndex()
+	--Events.DistrictRemovedFromMap.Add(OnDistrictChanged)
+	--Events.DistrictAddedToMap.Add(OnDistrictChanged)
 
-	UpdatePlot("Development", plotID)
+	Events.ImprovementAddedToMap.Add(OnImprovementAdded)
+
+	--Events.NationalParkAdded.Add(OnNationalParkAdded)
 end
 
-Events.DistrictRemovedFromMap.Add(function (playerID, districtID, cityID, X, Y, districtIndex)
-	print("District Removed")
-	--tprint(arg)
-	UpdatePlot(playerID, Map.GetPlot(X, Y):GetIndex())
-end)
+improvements_initialized = false;
+function GameLoaded()
+	print("Game load complete")
+	if not(improvements_initialized) then
+		print("Initializing improvements")
+		NewGrowthProperty(DevPropertyID, Threshold, CalculateDevGrowth, ImprovementTrigger)
+		RegisterAllEvents()
+		improvements_initialized = true
+	end
+end
+Events.LoadGameViewStateDone.Add(GameLoaded)
+
+-- CITY EVENTS
+function OnCityTileChanged(ownerID, cityID, iX, iY)
+	print("City Tile Changed: "..cityID)
+	local plotID = Map.GetPlot(iX, iY):GetIndex()
+
+	UpdatePlot(DevPropertyID, plotID)
+end
+function CityAdded(playerID, cityID, iX, iY)
+	print("City Added: "..cityID)
+	local plotID = Map.GetPlot(iX, iY):GetIndex()
+	local city = Cities.GetCityInPlot(iX, iY)
+
+	local plots = city:GetOwnedPlots()
+
+	for k,plot in pairs(plots) do
+		UpdatePlot(DevPropertyID, plot:GetIndex())
+	end
+end
+function PopulationChanged(playerID, cityID, newPop)
+
+end
+
+-- DISTRICT UPDATES
+function OnDistrictChanged (playerID, districtID, cityID, X, Y, districtIndex)
+	print("District Added")
+	
+	local plotID = Map.GetPlot(X, Y):GetIndex()
+
+	UpdatePlot(DevPropertyID, plotID)
+end
 
 Events.BuildingAddedToMap.Add(function (X, Y, buildingID, playerID, cityID, percentComplete, isPillaged)
 	-- Mostly interested in checking for a wonder here to remove the tile
 	--print("Building Added!")
-	RemovePlotFromTables(playerID, Map.GetPlot(X, Y):GetIndex())
+	--RemovePlotFromTables(playerID, Map.GetPlot(X, Y):GetIndex())
 	--tprint(arg)
 end)
 
@@ -400,35 +537,17 @@ end)
 -- PLOT CHANGES
 function OnPlotChangeEvent(iX:number, iY:number)
 	--print("Plot Changed!")
-	UpdatePlot(Map.GetPlot(iX, iY))
+	UpdatePlot(DevPropertyID, Map.GetPlot(iX, iY):GetIndex())
 end
--- Several events call the same function, so we can set them in a loop
-local PlotRecalcGrowthEvents = {
-	Events.PlotAppealChanged,
-	--Events.PlotPropertyChanged,
-	Events.PlotYieldChanged,
-	Events.FeatureRemovedFromMap,
-	Events.FeatureAddedToMap,
-	Events.ResourceAddedToMap,
-	Events.ResourceRemovedFromMap
-}
 
 -- IMPROVEMENTS
 function OnImprovementAdded(iX, iY, eImprovement, playerID)
 	print("Improvement Added")
 	-- If an improvement is added by the player, the utilization should be set to at least the threshold
-	local plot = Map.GetPlot(iX, iY)
+	local plotID  = Map.GetPlot(iX, iY):GetIndex()
 	if notNilOrNegative(playerID) and plot ~= nil then
-		local DevData = GetPlotDevData(plot)
-
-		if DevData.Development < Threshold then
-			-- Only care if the utilization is below threshold
-			DevData.Development = Threshold
-			SetPlotDevData(plot, DevData)
-		end
-
-		-- Need to remove this plot index from the update tables
-		RemovePlotFromTables(playerID, plot:GetIndex())
+		SetValue(DevPropertyID, plotID, WTI_Config.AutoImproveThreshold)
+		--UpdatePlot(DevPropertyID, plotID)
 	end
 end
 
@@ -438,17 +557,7 @@ Events.ImprovementRemovedFromMap.Add(function (iX, iY, eImprovement, playerID)
 	local plot = Map.GetPlot(iX, iY)
 
 	if notNilOrNegative(playerID) then
-		local DevData = GetPlotDevData(plot)
-		if DevData ~= nil then
-			if notNilOrNegative(plot:GetOwner()) then
-				local newVal = DevData.Development / 2
-				DevData.Development = newVal
-				SetPlotDevData(plot, DevData)
-				UpdatePlot(plot)
-			else
-				RemovePlotFromTables(DevData.Owner, plot:GetIndex())
-			end
-		end
+		UpdatePlot(DevPropertyID, plot:GetIndex())
 	end
 end );
 
@@ -467,20 +576,6 @@ end)
 Events.WMDDetonated.Add(function (X, Y, playerID, WMDIndex)
 	
 end)
-
-Events.LoadComplete.Add(
-	function()
-		if #PlotRecalcGrowthEvents > 0 then
-			for _,event in orderedPairs(PlotRecalcGrowthEvents) do
-				event.Add(OnPlotChangeEvent)
-			end
-		end
-
-		Events.DistrictAddedToMap.Add(OnDistrictAdded)
-		Events.ImprovementAddedToMap.Add(OnImprovementAdded)
-		Events.NationalParkAdded.Add(OnNationalParkAdded)
-	end
-)
 
 -- #endregion
 
@@ -713,5 +808,6 @@ end
 -- #endregion End of iterator code --------------------
 -- #endregion 
 
+--GameTurnStart()
 
 print("IMPROVEMENTS IMPROVED.");

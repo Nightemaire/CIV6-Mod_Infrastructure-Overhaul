@@ -12,6 +12,10 @@ if speed_setting == nil then speed_setting = 3; end
 --------------------------------------------------------------
 WTI_Config = {}
 
+local ExpandThreshold = 10
+local ImprovementThreshold = 30
+local CityThreshold = 100
+
 -- THRESHOLD SCALAR --
 -- Lower values will result in tiles automatically improving faster
 -- This value gets multiplied by the game speed multiplier to arrive at a
@@ -35,33 +39,35 @@ end
 
 -- ALLOW APPEAL REDUCTION --
 -- If set false, then improvements which reduce appeal (mines, quarries, etc) will not be automatically constructed
-Allow_Appeal_Reduction = true
+WTI_Config.Allow_Appeal_Reduction = true
 
 -- FEATURE REMOVAL SETTINGS --
 -- Global toggle parameter
-Allow_Feature_Removal = false
+WTI_Config.Allow_Feature_Removal = false
 -- Only applicable if Allow_Feature_Removal is set to true
-Allow_Marsh_Removal = false
-Allow_Forest_Removal = false
-Allow_Jungle_Removal = false
+WTI_Config.Allow_Marsh_Removal = false
+WTI_Config.Allow_Forest_Removal = false
+WTI_Config.Allow_Jungle_Removal = false
 
 -- BONUS WHEN WORKED --
 -- This is the bonus applied to the gain when a tile is worked. A value of 5 will exactly cancel out a tile with
 -- disgusting appeal, and the tile will not gain any utilization.
-Development_Bonus_If_Worked = 5
+WTI_Config.GROWTH_WORKED = 5
 
 -- ADDITIONAL BONUSES --
-GROWTH_FRESHWATER = 2
-GROWTH_HASROUTE = 4
-GROWTH_YIELD = 1/3	-- The gain here is calculated as floor(yield*Gain_Yield), i.e. yield of 3 is gain of 1, yield of 2 is gain of 0, yield of 4 is gain of 1, yield of 6 is gain of 2.
+WTI_Config.GROWTH_FRESHWATER = 3
+WTI_Config.GROWTH_HASROUTE = 4		-- The route sub type is subtracted from this value, so a tertiary route is 3 less than this value, while a railroad gets the full value
+WTI_Config.GROWTH_YIELD = 1			-- The gain here is calculated as floor[(food+production)*GROWTH_YIELD]. Fractional values are permitted.
 
 local GameSpeedType = GameConfiguration.GetGameSpeedType()
 local SpeedMultiplier = GameInfo.GameSpeeds[GameSpeedType].CostMultiplier
 
 -- Required utilization before the tile automatically improves
-AutoImproveThreshold = Threshold_Scalar * SpeedMultiplier
+WTI_Config.ExpansionThreshold = ExpandThreshold * Threshold_Scalar * SpeedMultiplier
+WTI_Config.AutoImproveThreshold = ImprovementThreshold * Threshold_Scalar * SpeedMultiplier
+WTI_Config.BuildCityThreshold = CityThreshold * Threshold_Scalar * SpeedMultiplier
 
 -- Development works with appeal, which is low order of magnitude, so we scale that to work with the threshold
-DevelopmentScalar = 10	
+WTI_Config.DevelopmentScalar = 100
 
 --print("Auto-Improvements config loaded")

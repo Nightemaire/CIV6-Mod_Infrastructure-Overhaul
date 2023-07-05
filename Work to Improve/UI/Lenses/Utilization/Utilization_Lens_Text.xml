@@ -6,16 +6,16 @@
 <GameData>
 	<BaseGameText>
 		<Row Tag="LOC_HUD_DEVELOPMENT_LENS">
-			<Text>Utilization</Text>
+			<Text>Development</Text>
 		</Row>
 		<Row Tag="LOC_HUD_DEVELOPMENT_LENS_TOOLTIP">
-			<Text>Highlights information about tile utilization</Text>
+			<Text>Highlights information about tile development</Text>
 		</Row>
 		<Row Tag="LOC_HUD_GROWTH_LENS">
-			<Text>Utilization Growth</Text>
+			<Text>Development Growth</Text>
 		</Row>
 		<Row Tag="LOC_HUD_GROWTH_LENS_TOOLTIP">
-			<Text>Highlights information about tile utilization growth</Text>
+			<Text>Highlights information about tile development growth</Text>
 		</Row>
 		
 		<!-- DEVELOPMENT -->
