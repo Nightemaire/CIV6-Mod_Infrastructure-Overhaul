@@ -41,7 +41,7 @@ local i_Railroad = GameInfo.Routes["ROUTE_RAILROAD"].Index;
 -- ===========================================================================
 
 local function DebugRoutes(msg)
-	print(msg)
+	--print(msg)
 end
 -- Makes sure that when the trader moves, the route becomes a primary route
 local m_eTrader : number = GameInfo.Units["UNIT_TRADER"].Index

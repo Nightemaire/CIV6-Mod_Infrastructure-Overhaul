@@ -6,7 +6,7 @@
 UPDATE Units	
 
 SET 
-Cost = 140,
+Cost = 220,
 PopulationCost = 2,
 PrereqPopulation = 4
 

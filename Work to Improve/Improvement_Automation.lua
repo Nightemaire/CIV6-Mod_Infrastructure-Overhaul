@@ -48,6 +48,9 @@ local iLumberMill : number = GameInfo.Improvements["IMPROVEMENT_LUMBER_MILL"].In
 local iPasture : number = GameInfo.Improvements["IMPROVEMENT_PASTURE"].Index
 local iFishery : number = GameInfo.Improvements["IMPROVEMENT_FISHERY"].Index
 local iMine : number = GameInfo.Improvements["IMPROVEMENT_MINE"].Index
+local iMeteor : number = GameInfo.Improvements["IMPROVEMENT_METEOR_GOODY"].Index
+local iBarbCamp : number = GameInfo.Improvements["IMPROVEMENT_BARBARIAN_CAMP"].Index
+local iGoodyHut : number = GameInfo.Improvements["IMPROVEMENT_GOODY_HUT"].Index
 -- Governors
 local m_eGovernorLiang : number = GameInfo.Governors["GOVERNOR_THE_BUILDER"].Index
 local m_eAquaculturePromotion : number = GameInfo.GovernorPromotions["GOVERNOR_PROMOTION_AQUACULTURE"].Index
@@ -109,7 +112,7 @@ local BurnMePlease = false;			-- Will spawn barbarians on recent improvements to
 if Debugging then
 	print("Debugging flag is enabled")
 	if InstaImprove then
-		DevelopmentScalar = DevelopmentScalar*5
+		WTI_Config.DevelopmentScalar = WTI_Config.DevelopmentScalar*4
 		print(" - Tiles will improve extra fast")
 	end
 	if BurnMePlease then
@@ -122,7 +125,9 @@ local BarbSpawnTurn = 0;
 local Barbing = false;
 local BarbSpawnPlot = nil;
 
+print("Expansion Threshold = "..WTI_Config.ExpansionThreshold);
 print("Improvement Threshold = "..WTI_Config.AutoImproveThreshold);
+print("City Threshold = "..WTI_Config.BuildCityThreshold);
 
 -- #endregion
 
@@ -132,99 +137,120 @@ print("Improvement Threshold = "..WTI_Config.AutoImproveThreshold);
 
 function ImprovementTrigger(plotID : number)
 	if plotID ~= nil then
-		pPlot = Map.GetPlotByIndex(plotID)
-		CB_Method = pPlot:GetProperty("Development_CB_Method")
+		local pPlot = Map.GetPlotByIndex(plotID)
+		local CB_Method = pPlot:GetProperty("Development_CB_Method")
 		
 		if CB_Method ~= nil then
 			print("Trigger method: "..CB_Method)
-			if CB_Method == "ClaimTile" then
-				TryClaimTile(pPlot, playerID)
-			elseif CB_Method == "ImproveTile" then
-				TryMakeImprovement(pPlot, GetAutoImprovementType(pPlot), false)
-			elseif CB_Method == "BuildCity" then
-				TryBuildCity(pPlot, playerID)
+			if CB_Method == 1 then
+				TryClaimTile(pPlot)
+			elseif CB_Method == 2 then
+				TryMakeImprovement(pPlot)
+			elseif CB_Method == 3 then
+				TryBuildCity(pPlot)
 			else
 				print("No callback method implemented");
 			end
 		else
 			print("Callback method not defined")
 		end
+
+		DetermineMethod(pPlot)
+		UpdatePlot(DevPropertyID, plotID)
 	end
 end
 
 function CalculateDevGrowth(plotID : number)
 	--print("Calculating Growth")
-	if plotID ~= nil then
-		plot = Map.GetPlotByIndex(plotID)
-		
-		if plot ~= nil then
-			-- Get plot details
-			local owner			= plot:GetOwner()
-			local workerCount	= plot:GetWorkerCount()
-			local appeal		= plot:GetAppeal()
-			local isFreshWater	= plot:IsFreshWater()
-			local hasRoute		= plot:IsRoute()
-			local yield			= plot:GetYield(iProduction) + plot:GetYield(iFood)
-			local city 			= Cities.GetPlotWorkingCity(plotID)
-			local distToCity = 5;
-			if city ~= nil then
-				distToCity	= Map.GetPlotDistance(plot:GetX(), plot:GetY(), city:GetX(), city:GetY())
-			end
+	if plotID == nil then return nil; end
+	local plot = Map.GetPlotByIndex(plotID)
+	
+	-- Can't calc anything without a plot...
+	if plot == nil then return nil; end
 
-			-- Set the base growth to the tile's appeal (can be negative)
-			-- If negative appeal, and unworked, utilization will drop back to zero
-			local growth = appeal
-
-			-- Subtract how far the plot is from the city (if adjacent subtract nothing)
-			-- << SHOULD REPLACE THIS WITH A PATH DISTANCE THAT ACCOUNTS FOR ROUTES >>
-			growth = growth - (distToCity - 1)
-
-			-- Growth from yields can be fractional, but so we should floor the value
-			growth = growth + math.floor(yield * WTI_Config.GROWTH_YIELD)
-
-			-- Check for some other growths
-			if isFreshWater then growth = growth + WTI_Config.GROWTH_FRESHWATER; end
-			if hasRoute then
-				local subType = plot:GetProperty("RouteSubType")
-				if subType == nil then subType = 1; end
-				-- Subtract the route subtype, primary routes add the most benefit
-				growth = growth + WTI_Config.GROWTH_HASROUTE - subType
-			end
-							
-			-- Add to the growth if the tile is being worked
-			if workerCount > 0 then growth = growth + WTI_Config.GROWTH_WORKED; end
-
-			-- Scale the growth so it is compatible with utilization
-			return growth * WTI_Config.DevelopmentScalar
-		end
+	-- Get plot details
+	local owner			= plot:GetOwner()
+	local workerCount	= plot:GetWorkerCount()
+	local appeal		= plot:GetAppeal()
+	local isFreshWater	= plot:IsFreshWater()
+	local hasRoute		= plot:IsRoute()
+	local yield			= plot:GetYield(iProduction) + plot:GetYield(iFood)
+	local city 			= Cities.GetPlotWorkingCity(plotID)
+	local distToCity = 5;
+	if city ~= nil then
+		distToCity	= Map.GetPlotDistance(plot:GetX(), plot:GetY(), city:GetX(), city:GetY())
 	end
 
-	return nil
+	-- Set the base growth to the tile's appeal (can be negative)
+	-- If negative appeal, and unworked, utilization will drop back to zero
+	local growth = appeal * WTI_Config.GROWTH_APPEAL
+
+	-- Subtract how far the plot is from the city (if adjacent subtract nothing)
+	-- << SHOULD REPLACE THIS WITH A PATH DISTANCE THAT ACCOUNTS FOR ROUTES >>
+	growth = growth - (distToCity - 1)
+
+	-- Growth from yields can be fractional, but so we should floor the value
+	growth = growth + math.floor(yield * WTI_Config.GROWTH_YIELD)
+
+	-- Check for some other growths
+	if isFreshWater then growth = growth + WTI_Config.GROWTH_FRESHWATER; end
+	if hasRoute then
+		local subType = plot:GetProperty("RouteSubType")
+		if subType == nil then subType = 1; end
+		-- Subtract the route subtype, primary routes add the most benefit
+		growth = growth + WTI_Config.GROWTH_HASROUTE - subType
+	end
+					
+	-- Add to the growth if the tile is being worked
+	if workerCount > 0 then growth = growth + WTI_Config.GROWTH_WORKED; end
+
+	-- Scale the growth
+	return growth * WTI_Config.DevelopmentScalar
 end
 
-function OnPlotInitialized(PropertyID, plotID : number)
-	if PropertyID == DevPropertyID then
-		print("Responding to plot init")
+function DetermineMethod(pPlot)
+	if pPlot == nil then
+		print("Could not determine method for a nil plot")
+		return
+	end
+	
+	local plotID = pPlot:GetIndex()
 
-		local pPlot = Map.GetPlotByIndex(plotID)
-		-- Some simple cases to handle
-		if pPlot == nil then return; end
-		if pPlot:GetOwner() < 0 then 
-			plot:SetProperty("Development_CB_Method", "ClaimTile")
-			ChangeThreshold(PropertyID, plotID, WTI_Config.ExpansionThreshold)
-			return; 
-		end
-		if pPlot:GetOwner() > 0 then
+	if pPlot:GetOwner() < 0 then
+		pPlot:SetProperty("Development_CB_Method", 1)
+		ChangeThreshold(DevPropertyID, plotID, WTI_Config.ExpansionThreshold)
+		return;
+	else
+		local dist, city = FindClosestCity(pPlot:GetX(), pPlot:GetY(), 5)
+		--print("Closest City: "..dist)
+
+		if dist <= 3 then
+			-- This plot is owned, and in range of a city, so can only improve.
+			pPlot:SetProperty("Development_CB_Method", 2)
+			ChangeThreshold(DevPropertyID, plotID, WTI_Config.AutoImproveThreshold)
+
+			-- Iterate over the adjacent plots to initialize any plots that are on the boundary
+			-- This is so they can be checked for building cities
 			for i = 0, 5 do
 				local adjPlot = Map.GetAdjacentPlot(pPlot:GetX(), pPlot:GetY(), i)
 				if adjPlot ~= nil then
 					local owner = adjPlot:GetOwner()
 					if owner < 0 then
-						UpdatePlot(PropertyID, adjPlot:GetIndex())
+						UpdatePlot(DevPropertyID, adjPlot:GetIndex())
 					end
 				end
 			end
-		end`	
+		else
+			pPlot:SetProperty("Development_CB_Method", 3)
+			ChangeThreshold(DevPropertyID, plotID, WTI_Config.BuildCityThreshold)
+		end
+	end
+end
+
+function OnPlotInitialized(PropertyID, plotID : number)
+	if PropertyID == DevPropertyID then
+		--print("Plot Initialized: "..plotID)
+		DetermineMethod(Map.GetPlotByIndex(plotID))
 	end
 end
 LuaEvents.OnPlotPropertyInitialized.Add(OnPlotInitialized)
@@ -235,6 +261,9 @@ LuaEvents.OnPlotPropertyInitialized.Add(OnPlotInitialized)
 -- ===========================================================================
 
 function GetAutoImprovementType(pPlot)
+
+	if pPlot == nil then return -1; end
+
 	local ePlotResource = pPlot:GetResourceType();
 	local ePlotFeature = pPlot:GetFeatureType();
 	local ePlotTerrain = pPlot:GetTerrainType();
@@ -279,9 +308,11 @@ function GetAutoImprovementType(pPlot)
 	-- Could change marsh to have it clear the tile automatically
 	-- or make a new improvement type for marsh tiles specifically?
 	if isMountain or hasMarsh then return -1; end
+
+	-- Check for lumber mills
 	if hasForest or hasJungle then return iLumberMill; end
-	if isHills and AllowAppealReduction then return iMine; end
-	if isFlatland then return iFarm; end
+	if isHills and WTI_Config.AllowAppealReduction then return iMine; end
+	if isFlatland or hasFloodplains then return iFarm; end
 	if isWater then return iFishery; end
 
 	return -1;
@@ -337,101 +368,167 @@ function IsAquacultureAvailable(City)
 	return false
 end
 
-function TryClaimTile(pPlot)
+function SumPlayersAdjacentDevelopment(pPlot)
 	local AdjPlayerDev = {}
+	
 	for i = 0, 5 do
 		local adjPlot = Map.GetAdjacentPlot(pPlot:GetX(), pPlot:GetY(), i)
-		local owner = adjPlot:GetOwner()
-		if owner >= 0 then
-			local playerDev = AdjPlayerDev[owner]
-			local plotDev = ReadValue(DevPropertyID)
-			if plotDev ~= nil then
-				if playerDev ~= nil then
-					AdjPlayerDev[owner] = plotDev
-				else
-					AdjPlayerDev[owner] = playerDev + plotDev
+		if adjPlot ~= nil then
+			local owner = adjPlot:GetOwner()
+			if owner >= 0 then
+				local thisPlayer = AdjPlayerDev[owner]
+				local playerDev = 0;
+				local playerMaxPlotID = nil
+				local maxPlotDev = -1
+				if thisPlayer ~= nil then
+					playerDev = thisPlayer[1]
+					playerMaxPlotID = thisPlayer[3]
+					maxPlotDev = thisPlayer[4]
+				end
+				
+				local plotDev = ReadValue(DevPropertyID, adjPlot)
+				if plotDev ~= nil then
+					if plotDev > maxPlotDev then
+						maxPlotDev = plotDev
+						playerMaxPlotID = adjPlot:GetIndex()
+					end
+					AdjPlayerDev[owner] = {playerDev + plotDev, owner, playerMaxPlotID, maxPlotDev}
 				end
 			end
 		end
 	end
 
+	local maxDev = -1;
+	local highestPlayer = -1
+	local highestPlot = nil
+	for k,v in pairs(AdjPlayerDev) do
+		if k >= 0 then
+			if v[1] > maxDev then
+				highestPlayer = k
+				highestPlot = v[3]
+				maxDev = v[1]
+			elseif v[1] == maxDev then
+				highestPlayer = -1
+				highestPlot = nil
+			end
+		end
+	end
+
+	return highestPlayer, highestPlot
+end
+
+function TryClaimTile(pPlot)
+	--print("Claiming a tile!")
+	local HighestPlayerAdjDev, HighestPlot = SumPlayersAdjacentDevelopment(pPlot)
+
 	-- Claim the tile for whoever has the most adjacent development
-	local N_AdjPlayers = #AdjPlayerDev
-	if N_AdjPlayers == 0 then
-		return nil
-	elseif N_AdjPlayers == 1 then
-		pPlot:SetOwner(AdjPlayerDev[1])
-	else
-		print("There was a tie as to who claims the tile, it goes unclaimed!")
+	if HighestPlayerAdjDev < 0 then
+		print("The tile could not be claimed by one player!")
 		local plotID = pPlot:GetIndex()
-		SnoozeTrigger(DevPropertyID, plotID, 1)
+		SnoozeTrigger(DevPropertyID, plotID, 1 * TurnMultiplier)
+		return
+	else
+		if HighestPlot ~= nil then
+			local city = Cities.GetPlotWorkingCity(HighestPlot)
+			if city == nil then return; end
+
+			local distToCity = Map.GetPlotDistance(pPlot:GetX(), pPlot:GetY(), city:GetX(), city:GetY())
+			print("Claim dist = "..distToCity)
+			if distToCity <= 3 then
+				WorldBuilder.CityManager():SetPlotOwner(pPlot, city)
+			else
+				pPlot:SetOwner(city:GetOwner())
+			end
+		end
 	end
 end
 
-function TryMakeImprovement(pPlot, eImprovementType, cityHasAquaculture)
+function TryMakeImprovement(pPlot)
 	local builtImprovement = false
-	if notNilOrNegative(eImprovementType) and pPlot ~= nil then
-		local plotX = pPlot:GetX()
-		local plotY = pPlot:GetY()
-		local iPlayer = pPlot:GetOwner()
+
+	if pPlot == nil then
+		print("Plot was nil, can't improve")
+		return false
+	end
 		
-		local PlotCanHave = ImprovementBuilder.CanHaveImprovement(pPlot, eImprovementType , NO_TEAM);
-		local PlayerHasReqs = PlayerKnowsImprovement(iPlayer, eImprovementType);
-
-		if PlotCanHave and PlayerHasReqs then
-			CanBuildImprovement = true;
-
-			-- If a fishery, make sure it's available
-			if GameInfo.Improvements[eImprovementType].ImprovementType == "IMPROVEMENT_FISHERY" then
-				if not(cityHasAquaculture) then CanBuildImprovement = false; end
-			end
-
-			if CanBuildImprovement then
-				--print("Good to go!");
-				ImprovementBuilder.SetImprovementType(pPlot, eImprovementType, iPlayer);
-
-				-- Notify the player
-				local improvementName =  Locale.Lookup(GameInfo.Improvements[eImprovementType].Name)
-				local msgString = Locale.Lookup("LOC_PLOT_AUTO_IMPROVED_MESSAGE_TEXT")
-				local sumString = Locale.Lookup("LOC_PLOT_AUTO_IMPROVED_SUMMARY_TEXT", improvementName)
-				local type = GameInfo.Notifications["NOTIFICATION_ROADS_UPGRADED"].Index;
-				NotificationManager.SendNotification(iPlayer, type, msgString, sumString, plotX, plotY);
-				
-				print("Auto-Improved <"..plotX..","..plotY.."> belonging to Player "..iPlayer.." with a "..improvementName);
-				
-				-- Setup barbarian spawn if debugging...
-				if Debugging and BurnMePlease and not(Barbing) and iPlayer == 0 then
-					print("You better watch out...")
-					Barbing = true;
-					BarbSpawnPlot = plot;
-					BarbSpawnTurn = Game.GetCurrentGameTurn() + BarbSpawnDelay;
-				end
-				builtImprovement = true
-			else
-				printIfPlayer(iPlayer, "Failed to improve...");
-			end
-		else
-			--printIfPlayer(iPlayer, "Plot cannot be improved");
-		end
-	else
-		printIfPlayer(iPlayer, "Improvement or plot wasn't defined properly");
+	local eImprovementType = GetAutoImprovementType(pPlot)
+	if eImprovementType < 0 then
+		print("Improvement couldn't be identified, can't improve, snoozing")
+		SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
+		return false
 	end
 
-	if not(builtImprovement) then
-		-- Delay 5 turns (modified by game speed) before trying again
-		SnoozeTrigger(DevPropertyID, plotID, 5 * TurnMultiplier)
+	local plotX = pPlot:GetX()
+	local plotY = pPlot:GetY()
+	local iPlayer = pPlot:GetOwner()
+	
+	local PlotCanHave = ImprovementBuilder.CanHaveImprovement(pPlot, eImprovementType , NO_TEAM);
+	local PlayerHasReqs = PlayerKnowsImprovement(iPlayer, eImprovementType);
+
+	if PlotCanHave and PlayerHasReqs then
+		CanBuildImprovement = true;
+
+		-- If a fishery, make sure it's available
+		if GameInfo.Improvements[eImprovementType].ImprovementType == "IMPROVEMENT_FISHERY" then
+			if not(IsAquacultureAvailable(Cities.GetPlotWorkingCity(pPlot:GetIndex()))) then
+				printIfPlayer(iPlayer, "Cannot build fisheries in this city");
+				SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
+				return false
+			end
+		end
+
+		if CanBuildImprovement then
+			--print("Good to go!");
+			ImprovementBuilder.SetImprovementType(pPlot, eImprovementType, iPlayer);
+
+			-- Notify the player
+			local improvementName =  Locale.Lookup(GameInfo.Improvements[eImprovementType].Name)
+			local msgString = Locale.Lookup("LOC_PLOT_AUTO_IMPROVED_MESSAGE_TEXT")
+			local sumString = Locale.Lookup("LOC_PLOT_AUTO_IMPROVED_SUMMARY_TEXT", improvementName)
+			local type = GameInfo.Notifications["NOTIFICATION_ROADS_UPGRADED"].Index;
+			NotificationManager.SendNotification(iPlayer, type, msgString, sumString, plotX, plotY);
+			
+			print("Auto-Improved <"..plotX..","..plotY.."> belonging to Player "..iPlayer.." with a "..improvementName);
+			
+			-- Setup barbarian spawn if debugging...
+			if Debugging and BurnMePlease and not(Barbing) and iPlayer == 0 then
+				print("You better watch out...")
+				Barbing = true;
+				BarbSpawnPlot = plot;
+				BarbSpawnTurn = Game.GetCurrentGameTurn() + BarbSpawnDelay;
+			end
+
+			builtImprovement = true
+		else
+			printIfPlayer(iPlayer, "Failed to improve...");
+			SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
+			return false
+		end
+	else
+		printIfPlayer(iPlayer, "Plot cannot have the improvement, or player is missing a requirement");
+		SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
+		return false
 	end
 	
 	return builtImprovement;
 end
 
-function TryRepairPlot(plot : object)
-	printIfPlayer(playerID, "Repaired pillaged tile");
+function TryRepairPlot(pPlot : object)
+	printIfPlayer(0, "Repaired pillaged tile");
 	ImprovementBuilder.SetImprovementPillaged(pPlot, false)
 end
 
-function TryBuildCity(pPlot, playerID)
-	
+function TryBuildCity(pPlot)
+	print("Making a new city!")
+
+	local owner = pPlot:GetOwner();
+	if owner < 0 then
+		local plotID = pPlot:GetIndex()
+		SnoozeTrigger(DevPropertyID, plotID, 2 * TurnMultiplier)
+		return
+	else
+		Players[owner]:GetCities():Create(pPlot:GetX(), pPlot:GetY())
+	end
 end
 
 -- #endregion
@@ -447,8 +544,8 @@ function RegisterAllEvents()
 		--Events.PlotPropertyChanged,
 		Events.PlotYieldChanged,
 		Events.FeatureRemovedFromMap,
-		Events.FeatureAddedToMap,
-		Events.ResourceAddedToMap,
+		--Events.FeatureAddedToMap,
+		--Events.ResourceAddedToMap,
 		Events.ResourceRemovedFromMap
 	}
 
@@ -475,7 +572,7 @@ function GameLoaded()
 	print("Game load complete")
 	if not(improvements_initialized) then
 		print("Initializing improvements")
-		NewGrowthProperty(DevPropertyID, Threshold, CalculateDevGrowth, ImprovementTrigger)
+		NewGrowthProperty(DevPropertyID, Threshold, CalculateDevGrowth, ImprovementTrigger, -WTI_Config.ExpansionThreshold, WTI_Config.BuildCityThreshold * 1.2)
 		RegisterAllEvents()
 		improvements_initialized = true
 	end
@@ -542,28 +639,28 @@ end
 
 -- IMPROVEMENTS
 function OnImprovementAdded(iX, iY, eImprovement, playerID)
-	print("Improvement Added")
 	-- If an improvement is added by the player, the utilization should be set to at least the threshold
 	local plotID  = Map.GetPlot(iX, iY):GetIndex()
-	if notNilOrNegative(playerID) and plot ~= nil then
+	if notNilOrNegative(playerID) and plot ~= nil and eImprovement ~= iMeteor then
+		print("Improvement Added")
 		SetValue(DevPropertyID, plotID, WTI_Config.AutoImproveThreshold)
 		--UpdatePlot(DevPropertyID, plotID)
 	end
 end
 
 Events.ImprovementRemovedFromMap.Add(function (iX, iY, eImprovement, playerID)
-	print("Improvement Removed")
 	-- halve the utilization so it doesn't re-improve immediately
 	local plot = Map.GetPlot(iX, iY)
 
-	if notNilOrNegative(playerID) then
+	if notNilOrNegative(playerID) and eImprovement ~= iBarbCamp and eImprovement ~= iGoodyHut then
+		print("Improvement Removed")
 		UpdatePlot(DevPropertyID, plot:GetIndex())
 	end
 end );
 
 -- PLAYER DEFEATS
 Events.PlayerDestroyed.Add(function (...)
-	print("Player Destoryed")
+	print("Player Destroyed")
 	tprint(arg)
 end)
 
@@ -592,7 +689,7 @@ function FindClosestCity(iStartX, iStartY, range)
 	local pPlot = Map.GetPlot(iStartX, iStartY)
 
 	for pAdjacencyPlot in PlotAreaSpiralIterator(pPlot, range, SECTOR_NONE, DIRECTION_CW, DIRECTION_OUT, CENTRE_EXCLUDE) do
-        if pPlot:IsCity() then
+        if pAdjacencyPlot:IsCity() then
 			local thisX = pAdjacencyPlot:GetX();
 			local thisY = pAdjacencyPlot:GetY();
             local iDistance = Map.GetPlotDistance(iStartX, iStartY, thisX, thisY);

@@ -31,7 +31,7 @@ function GetPropertyList()
     --if List == nil then List = {}; end
     return PropertyList
 end
-function NewGrowthProperty(ID : string, defaultThreshold : number, growthCalcFunc, defaultCallback)
+function NewGrowthProperty(ID : string, defaultThreshold : number, growthCalcFunc, defaultCallback, minVal, maxVal)
     DebugTileGrowth("// Creating growth property: "..ID)
     
     if growthCalcFunc == nil then
@@ -48,13 +48,15 @@ function NewGrowthProperty(ID : string, defaultThreshold : number, growthCalcFun
             PropertyList[ID] = {
                 DefaultThreshold = defaultThreshold,
                 GrowthCalcFunc = growthCalcFunc,
-                DefaultCallback = defaultCallback
+                DefaultCallback = defaultCallback,
+                MinVal = minVal,
+                MaxVal = maxVal
             }
         else
             print(">> Tried to add a property that already exists!")
         end
 
-        SetPropertyList(PropertyList)
+        --SetPropertyList(PropertyList)
         SetTurnTable(ID, {})
     else
         print("ERROR: Tried to create a new growth property but an arg was nil")
@@ -93,18 +95,18 @@ end
 function SetTurnTable(PropertyID : string, TurnTable : table) 
     Game:SetProperty("GrowthTurnTable_"..PropertyID, TurnTable)
 end
-function UpdateTurnTable(PropertyID : string, plotID : number, prevTurn : number)
+function UpdateTurnTable(PropertyID : string, plotID : number, newTurn, prevTurn : number)
     if PropertyID == nil or plotID == nil or prevTurn == nil then return; end
 
-    turnTable = GetTurnTable(PropertyID)
-    entry = GetPlotPropertyData(PropertyID, plotID)
-    if entry == nil then return; end
+    local turnTable = GetTurnTable(PropertyID)
+    
+    if newTurn == nil then return; end
 
     if turnTable[prevTurn] ~= nil then
         turnTable[prevTurn][plotID] = nil
     end
-    if turnTable[entry.TriggersOn] == nil then turnTable[entry.TriggersOn] = {}; end
-    turnTable[entry.TriggersOn][plotID] = true
+    if turnTable[newTurn] == nil then turnTable[newTurn] = {}; end
+    turnTable[newTurn][plotID] = true
 
     SetTurnTable(PropertyID, turnTable)
 end
@@ -154,7 +156,7 @@ function InitPlotPropertyData(PropertyID, pPlot)
         LuaEvents.OnPlotPropertyInitialized(PropertyID, plotID)
     end
 end
-function IsPlotInitialized(PropertyID, plotID)
+function PlotIsInitialized(PropertyID, plotID)
     local pPlot = Map.GetPlotByIndex(plotID)
     local Entry = pPlot:GetProperty("GP_"..PropertyID.."_Value")
     return Entry ~= nil
@@ -166,14 +168,19 @@ function WriteValue(PropertyID, pPlot, value)               pPlot:SetProperty("G
 function WriteGrowth(PropertyID, pPlot, growth)             pPlot:SetProperty("GP_"..PropertyID.."_Growth", growth);            end
 function WriteLastUpdate(PropertyID, pPlot, update)         pPlot:SetProperty("GP_"..PropertyID.."_LastUpdate", update);        end
 function WriteThreshold(PropertyID, pPlot, threshold)       pPlot:SetProperty("GP_"..PropertyID.."_Threshold", threshold);      end
-function WriteTriggerTurn(PropertyID, pPlot, triggerTurn)   pPlot:SetProperty("GP_"..PropertyID.."_TriggerTurn", triggerTurn);  end
 function WriteTriggered(PropertyID, pPlot, triggered)       pPlot:SetProperty("GP_"..PropertyID.."_Triggered", triggered);      end
+function WriteTriggerTurn(PropertyID, pPlot, newTriggerTurn)
+    local previousTurn = ReadTriggerTurn(PropertyID, pPlot)
+    if newTriggerTurn <= Game.GetCurrentGameTurn() then newTriggerTurn = Game.GetCurrentGameTurn() + 1; end
+    pPlot:SetProperty("GP_"..PropertyID.."_TriggersOn", newTriggerTurn)
+    UpdateTurnTable(PropertyID, pPlot:GetIndex(), newTriggerTurn, previousTurn)
+end
 -- Read Accessors
 function ReadValue(PropertyID, pPlot)        if pPlot ~= nil then return pPlot:GetProperty("GP_"..PropertyID.."_Value");         else return 0;     end; end
 function ReadGrowth(PropertyID, pPlot)       if pPlot ~= nil then return pPlot:GetProperty("GP_"..PropertyID.."_Growth");        else return 0;     end; end
 function ReadLastUpdate(PropertyID, pPlot)   if pPlot ~= nil then return pPlot:GetProperty("GP_"..PropertyID.."_LastUpdate");    else return 0;     end; end
 function ReadThreshold(PropertyID, pPlot)    if pPlot ~= nil then return pPlot:GetProperty("GP_"..PropertyID.."_Threshold");     else return 0;     end; end
-function ReadTriggerTurn(PropertyID, pPlot)  if pPlot ~= nil then return pPlot:GetProperty("GP_"..PropertyID.."_TriggerTurn");   else return 0;     end; end
+function ReadTriggerTurn(PropertyID, pPlot)  if pPlot ~= nil then return pPlot:GetProperty("GP_"..PropertyID.."_TriggersOn");    else return 0;     end; end
 function ReadTriggered(PropertyID, pPlot)    if pPlot ~= nil then return pPlot:GetProperty("GP_"..PropertyID.."_Triggered");     else return false; end; end
 --]]
 
@@ -202,7 +209,7 @@ function GetPlotPropertyData(PropertyID, pPlot)
     return nil
 end
 function SetPlotPropertyData(PropertyID, pPlot, data)
-    if pPlot ~= nil and type(pPlot) == "table" then
+    if pPlot ~= nil and data ~= nil and type(pPlot) == "table" and type(data) == "table" then
         for k,v in pairs(data) do
             pPlot:SetProperty("GP_"..PropertyID.."_"..k, v)
         end
@@ -232,28 +239,31 @@ function UI_GetData(PropertyID, pPlot)
         if val ~= nil then
             local growth = ReadGrowth(PropertyID, pPlot)
             local updated = ReadLastUpdate(PropertyID, pPlot)
+            local triggerTurn = ReadTriggerTurn(PropertyID, pPlot)
             local CurrentTurn = Game.GetCurrentGameTurn()
             local newVal = val + ( (CurrentTurn - updated) * growth)
             local thold = ReadThreshold(PropertyID, pPlot)
 
-            return {newVal, growth, thold}
+            return {newVal, growth, thold, triggerTurn}
         end
     end
 
-    return {0,0,0}
+    return {0,0,0,0}
 end
 
 -- Property modifiers
 function SetGrowth(PropertyID : string, plotID : number, newGrowth : number)
     if PropertyID ~= nil and plotID ~= nil and newGrowth ~= nil then
         DebugTileGrowth("Setting Tile Growth: "..PropertyID..", "..plotID..", "..newGrowth);
-        local pPlot, Entry = GetEntry(PropertyID, plotID)
+        local pPlot = Map.GetPlotByIndex(plotID)
+        if pPlot == nil then return; end
 
-        local previousTurn = Entry.TriggersOn
-        Entry, triggered = UpdatePropertyEntry(Entry, newGrowth)
+        UpdatePlotProperties(PropertyID, pPlot)
 
-        SetPlotPropertyData(PropertyID, pPlot, Entry)
-        UpdateTurnTable(PropertyID, plotID, previousTurn)
+        local CurrentValue = ReadValue(PropertyID, pPlot)
+        local Threshold = ReadThreshold(PropertyID, pPlot)
+        
+        WriteTriggerTurn(PropertyID, pPlot, EstimateTriggerTurn(newGrowth, CurrentValue, Threshold))
     else
         DebugTileGrowth("Tried to set growth, but an arg was nil");
     end
@@ -262,14 +272,17 @@ function ChangeGrowth(PropertyID : string, plotID : number, adjustment : number)
     if PropertyID ~= nil and plotID ~= nil and adjustment ~= nil then
         DebugTileGrowth("Adjusting Tile Growth: "..PropertyID..", "..plotID..", "..adjustment);
         local pPlot = Map.GetPlotByIndex(plotID)
-        local Entry = GetPlotPropertyData(PropertyID, pPlot)
+        if pPlot == nil then return; end
 
-        local newGrowth = Entry.Growth + adjustment;
-        local previousTurn = Entry.TriggersOn
-        Entry, triggered = UpdatePropertyEntry(Entry, newGrowth)
+        UpdatePlotProperties(PropertyID, pPlot)
 
-        SetPlotPropertyData(PropertyID, pPlot, Entry)
-        UpdateTurnTable(PropertyID, plotID, previousTurn)
+        local CurrentValue = ReadValue(PropertyID, pPlot)
+        local CurrentGrowth = ReadGrowth(PropertyID, pPlot)
+        local Threshold = ReadThreshold(PropertyID, pPlot)
+
+        local newGrowth = CurrentGrowth + adjustment;
+        
+        WriteTriggerTurn(PropertyID, pPlot, EstimateTriggerTurn(newGrowth, CurrentValue, Threshold))
     else
         DebugTileGrowth("Tried to adjust growth, but an arg was nil");
     end
@@ -278,91 +291,96 @@ function ChangeThreshold(PropertyID : string, plotID : number, newThreshold : nu
     if PropertyID ~= nil and plotID ~= nil and newThreshold ~= nil then
         DebugTileGrowth("Setting New Threshold: "..PropertyID..", "..plotID..", "..newThreshold);
         local pPlot = Map.GetPlotByIndex(plotID)
-        local Entry = GetPlotPropertyData(PropertyID, pPlot)
-        Entry.Threshold = newThreshold
-        local previousTurn = Entry.TriggersOn
-        Entry, triggered = UpdatePropertyEntry(Entry)
-        SetPlotPropertyData(PropertyID, pPlot, Entry)
-        UpdateTurnTable(PropertyID, plotID, previousTurn)
+        if pPlot == nil then return; end
+
+        UpdatePlotProperties(PropertyID, pPlot)
+        
+        local CurrentValue = ReadValue(PropertyID, pPlot)
+        local CurrentGrowth = ReadGrowth(PropertyID, pPlot)
+        local NewTurn = EstimateTriggerTurn(CurrentGrowth, CurrentValue, newThreshold)
+        
+        WriteThreshold(PropertyID, pPlot, newThreshold)
+        WriteTriggerTurn(PropertyID, pPlot, NewTurn)
     else
         DebugTileGrowth("Tried to adjust threshold, but an arg was nil");
     end
 end
 function SetValue(PropertyID : string, plotID : number, newValue)
     if PropertyID ~= nil and plotID ~= nil and newValue ~= nil then
+
         local pPlot = Map.GetPlotByIndex(plotID)
-        local Entry = GetPlotPropertyData(PropertyID, pPlot)
-        Entry.Value = newValue
-        Entry.LastUpdate = Game.GetCurrentGameTurn()
-        local previousTurn = Entry.TriggersOn
-        --CheckTrigger(Entry)
-        SetPlotPropertyData(PropertyID, pPlot, Entry)
-        UpdateTurnTable(PropertyID, plotID, previousTurn)
+        if pPlot == nil then return; end
+        
+        local CurrentGrowth = ReadGrowth(PropertyID, pPlot)
+        local Threshold = ReadThreshold(PropertyID, pPlot)
+
+        WriteTriggerTurn(PropertyID, pPlot, EstimateTriggerTurn(CurrentGrowth, newValue, Threshold))
     end
 end
 
 -- Trigger Management
 function SnoozeTrigger(PropertyID : string, plotID : number, delay)
     local pPlot = Map.GetPlotByIndex(plotID)
-    local entry = GetPlotPropertyData(PropertyID, pPlot)
-    if entry ~= nil then
-        local currentTriggerTurn = entry.TriggersOn
-        entry.TriggersOn = currentTriggerTurn + delay
+    if pPlot == nil then return; end
 
-        SetPlotPropertyData(PropertyID, pPlot, entry)
-        UpdateTurnTable(PropertyID, plotID, currentTriggerTurn)
-    end
+    UpdatePlotProperties(PropertyID, pPlot)
+
+    local currentTriggerTurn = ReadTriggerTurn(PropertyID, pPlot)
+    local currentGameTurn = Game.GetCurrentGameTurn()
+    local newTurn = currentTriggerTurn + delay;
+    if newTurn <= currentGameTurn then newTurn = currentGameTurn + 1; end
+
+    WriteTriggerTurn(PropertyID, pPlot, newTurn)
+
+    print("Snoozing plot: "..plotID..", from "..currentTriggerTurn.." to "..newTurn)
 end
 function ClearTrigger(PropertyID, plotID)
     if PropertyID ~= nil and plotID ~= nil then
         local pPlot = Map.GetPlotByIndex(plotID)
-        local Entry = GetPlotPropertyData(PropertyID, pPlot)
-        Entry.Triggered = false
-        previousTurn = Entry.TriggersOn
-        Entry, triggered = UpdatePropertyEntry(Entry)
-        --CheckTrigger(Entry)
-        SetPlotPropertyData(PropertyID, pPlot, Entry)
-        UpdateTurnTable(PropertyID, plotID, previousTurn)
+        if pPlot == nil then return; end
+
+        WriteTriggered(PropertyID, pPlot, false)
+        
+        UpdatePlotProperties(PropertyID, Entry)
     end
 end
 function SetTrigger(PropertyID, plotID)
     if PropertyID ~= nil and plotID ~= nil then
         local pPlot = Map.GetPlotByIndex(plotID)
-        local Entry = GetPlotPropertyData(PropertyID, pPlot)
-        Entry.Triggered = true
-        SetPlotPropertyData(PropertyID, pPlot, Entry)
-        UpdateTurnTable(PropertyID, plotID, previousTurn)
+        if pPlot == nil then return; end
+        
+        WriteTriggered(PropertyID, pPlot, true)
     end
 end
 
 -- Entry Utiltiies/Calculations
-function UpdatePropertyEntry(PlotEntry : table, newGrowth : number)
-    if PlotEntry ~= nil then
+function UpdatePlotProperties(PropertyID, pPlot : object)
+    if pPlot ~= nil then
+        local PropertyData = PropertyList[PropertyID]
         local CurrentTurn = Game.GetCurrentGameTurn()
-        local Triggered = false
+
+        local LastUpdated = ReadLastUpdate(PropertyID, pPlot)
+        if LastUpdated == nil then return; end
+
+        local CurrentValue = ReadValue(PropertyID, pPlot)
 
         -- Check to see if we've updated this turn already
-        if PlotEntry.LastUpdate ~= CurrentTurn then
+        if LastUpdated ~= CurrentTurn then
+            local CurrentGrowth = ReadGrowth(PropertyID, pPlot)
             -- Update the value to be current
-            PlotEntry.Value = PlotEntry.Value + ( (CurrentTurn - PlotEntry.LastUpdate) * PlotEntry.Growth)
-            PlotEntry.LastUpdate = CurrentTurn
+            local NewValue = CurrentValue + ( (CurrentTurn - LastUpdated) * CurrentGrowth)
+            if NewValue < PropertyData.MinVal then NewValue = PropertyData.MinVal; end
+            if NewValue > PropertyData.MaxVal then NewValue = PropertyData.MaxVal; end
+            
+            WriteValue(PropertyID, pPlot, NewValue)
+            CurrentValue = NewValue
+            WriteLastUpdate(PropertyID, pPlot, CurrentTurn)
         end
         
-        Triggered = CheckTrigger(PlotEntry)
-
-        -- Modify the growth after checking for triggers
-        if newGrowth ~= nil then
-            PlotEntry.Growth = newGrowth
-        end
-
-        if not(Triggered) then
-            -- If this plot hasn't triggered, then calculate the estimated trigger turn
-            PlotEntry.TriggersOn = EstimateTriggerTurn(PlotEntry.Growth, PlotEntry.Value, PlotEntry.Threshold, CurrentTurn)
-        end
-
-        return PlotEntry, Triggered
-    else
-        return PlotEntry, false
+        local Threshold = ReadThreshold(PropertyID, pPlot)
+        local Triggered = CurrentValue >= Threshold
+        
+        return Triggered;
     end
 end
 function GetEntry(PropertyID, plot)
@@ -376,23 +394,25 @@ function GetEntry(PropertyID, plot)
     
     return pPlot, entry
 end
-function EstimateTriggerTurn(Growth : number, Value : number, Threshold : number, CurrentTurn : number)
+function EstimateTriggerTurn(Growth : number, Value : number, Threshold : number)
     local triggerTurn = math.huge
+    local CurrentTurn = Game.GetCurrentGameTurn()
     if Growth > 0 then
         -- Get the difference between the trigger threshold and the current value
         local diff = Threshold - Value
         -- Number of turns is the diff divided by the growth rounded up
         local turns = math.ceil(diff / Growth)
+
+        -- We never want to set a trigger to be less than or equal to the current turn, because then it would never trigger
+        if turns <= 0 then
+            triggerTurn = CurrentTurn + 1;
+        else
         -- And so the expected improvement turn is the number of turns plus the current turn
-        triggerTurn = CurrentTurn + turns
+            triggerTurn = CurrentTurn + turns
+        end
     end
 
     return triggerTurn
-end
-function CheckTrigger(PlotEntry : table)
-    if PlotEntry == nil then return false; end
-
-    return PlotEntry.Value >= PlotEntry.Threshold
 end
 
 -- #endregion
@@ -421,6 +441,8 @@ GameEvents.OnGameTurnStarted.Add(OnGameTurnStarted)
 function CheckTurnTable(PropertyID : string, Turn : number)
     local TurnTable = GetTurnTable(PropertyID)
 
+    local PlotsToTrigger = {}
+
     if TurnTable ~= nil and Turn ~= nil then
         local TurnData = TurnTable[Turn]
 
@@ -432,13 +454,13 @@ function CheckTurnTable(PropertyID : string, Turn : number)
             -- Iterate over the keys of TurnData (which are the plot IDs scheduled to trigger this turn)
             for plotID,_ in pairs(TurnData) do
                 local ThisPlot = Map.GetPlotByIndex(plotID)
-                local PlotEntry = GetPlotPropertyData(PropertyID, ThisPlot)
-                PlotEntry, Triggered = UpdatePropertyEntry(PlotEntry)
-                SetPlotPropertyData(PropertyID, ThisPlot, PlotEntry)
+                if ThisPlot ~= nil then
+                    local Triggered = UpdatePlotProperties(PropertyID, ThisPlot)
 
-                -- If this plot triggered, attempt to invoke the callback function if it exists
-                if Triggered then
-                    PlotTrigger(PropertyID, plotID)
+                    -- If this plot triggered, attempt to invoke the callback function if it exists
+                    if Triggered and not(ReadTriggered(PropertyID, thisPlot)) then
+                        table.insert(PlotsToTrigger, {PropertyID, plotID})
+                    end
                 end
             end
             
@@ -446,46 +468,39 @@ function CheckTurnTable(PropertyID : string, Turn : number)
             SetTurnTable(PropertyID, TurnTable)
         end
     end
+
+    -- We trigger outside the checking loop so that if needed, the triggers can update the turn table without it getting overwritten
+    for k,trigger in pairs(PlotsToTrigger) do
+        PlotTrigger(trigger[1], trigger[2])
+    end
+
 end
 
 function UpdatePlot(PropertyID : string, plotID : number)
     if PropertyID ~= nil and plotID ~= nil then
         local pPlot = Map.GetPlotByIndex(plotID)
 
-        local Entry = GetPlotPropertyData(PropertyID, pPlot)
-		if Entry == nil then
+		if not(PlotIsInitialized(PropertyID, plotID)) then
 			InitPlotPropertyData(PropertyID, pPlot)
-			Entry = GetPlotPropertyData(PropertyID, pPlot)
 		end
 
         GrowthCalc = GetGrowthCalcFunc(PropertyID)
         newGrowth = GrowthCalc(plotID)
-        Entry, Triggered = UpdatePropertyEntry(Entry, newGrowth)
-
-        SetPlotPropertyData(PropertyID, pPlot, Entry)
-        UpdateTurnTable(PropertyID, plotID, Entry.TriggersOn)
-        
-        if Triggered then
-            PlotTrigger(PropertyID, plotID)
-        end
+        UpdatePlotProperties(PropertyID, pPlot)
     end
 end
 
 function PlotTrigger(PropertyID, plotID)
-    print("Plot growth triggered: "..PropertyID..", "..plotID)
+    --print("Plot growth triggered: "..PropertyID..", "..plotID)
     local CallbackFunc = GetCallbackFunc(PropertyID)
     if CallbackFunc ~= nil and type(CallbackFunc) == "function" then
         CallbackFunc(plotID)
     else
         print("ERROR: Invalid callback function")
     end
+
+    SetTrigger(PropertyID, plotID)
 end
-
--- #endregion
-
--- ===========================================================================
--- #region EVENTS
--- ===========================================================================
 
 -- #endregion
 

@@ -8,13 +8,16 @@
 			<Text>Land improved!</Text>
 		</Row>
 		<Row Tag="LOC_PLOT_AUTO_IMPROVED_SUMMARY_TEXT" Language="en_US">
-			<Text>A plot of land in your empire reached full utilization and built a {1_ImprovementType}. Nice!</Text>
+			<Text>A plot of land in your empire reached full development and built a {1_ImprovementType}. Nice!</Text>
 		</Row>
 		<Row Tag="LOC_PLOT_DEVELOPMENT_TOOLTIP_TEXT" Language="en_US">
-			<Text>Utilization: {1_Count}% / {2_Count}</Text>
+			<Text>Development: {1_Count}/{2_Count} | {3_Count}%</Text>
 		</Row>
 		<Row Tag="LOC_PLOT_UTIL_GROWTH_TOOLTIP_TEXT" Language="en_US">
-			<Text>Growth: {1_Count}% / {2_Count}</Text>
+			<Text>Growth: {1_Count} | {2_Count}%</Text>
+		</Row>
+		<Row Tag="LOC_PLOT_UTIL_TRIGGER_TOOLTIP_TEXT" Language="en_US">
+			<Text>Triggers on: Turn {1_Count}</Text>
 		</Row>
 	</LocalizedText>
 </GameData>
