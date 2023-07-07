@@ -19,10 +19,10 @@
 print("IMPROVING IMPROVEMENTS!!! 062223_2234");
 
 include("SupportFunctions.lua");
-include("TileGrowthSystem");
+--include("TileGrowthSystem");
 include("AutoImprovements_Config.lua");
 
---ExposedMembers.GameplayContext.TileGrowth
+local TG = ExposedMembers.TileGrowth
 
 -- #endregion
 
@@ -135,19 +135,21 @@ print("City Threshold = "..WTI_Config.BuildCityThreshold);
 -- #region DEVELOPMENT MANAGEMENT
 -- ===========================================================================
 
-function ImprovementTrigger(plotID : number)
+function ImprovementTrigger(plotID : number, direction : number)
 	if plotID ~= nil then
 		local pPlot = Map.GetPlotByIndex(plotID)
 		local CB_Method = pPlot:GetProperty("Development_CB_Method")
+
+		local success = false;
 		
-		if CB_Method ~= nil then
+		if CB_Method ~= nil & direction > 0 then
 			print("Trigger method: "..CB_Method)
 			if CB_Method == 1 then
-				TryClaimTile(pPlot)
+				success = TryClaimTile(pPlot)
 			elseif CB_Method == 2 then
-				TryMakeImprovement(pPlot)
+				success = TryMakeImprovement(pPlot)
 			elseif CB_Method == 3 then
-				TryBuildCity(pPlot)
+				success = TryBuildCity(pPlot)
 			else
 				print("No callback method implemented");
 			end
@@ -155,8 +157,14 @@ function ImprovementTrigger(plotID : number)
 			print("Callback method not defined")
 		end
 
-		DetermineMethod(pPlot)
-		UpdatePlot(DevPropertyID, plotID)
+		if success then
+			newMethod = DetermineMethod(pPlot)
+			if newMethod == nil then return; end
+			if newMethod ~= CB_Method then
+				TG.ClearTrigger(DevPropertyID, plotID)
+				TG.UpdatePlot(DevPropertyID, plotID)
+			end
+		end
 	end
 end
 
@@ -215,19 +223,17 @@ function DetermineMethod(pPlot)
 	end
 	
 	local plotID = pPlot:GetIndex()
+	local newMethod = nil;
 
 	if pPlot:GetOwner() < 0 then
-		pPlot:SetProperty("Development_CB_Method", 1)
-		ChangeThreshold(DevPropertyID, plotID, WTI_Config.ExpansionThreshold)
-		return;
+		newMethod = 1
 	else
 		local dist, city = FindClosestCity(pPlot:GetX(), pPlot:GetY(), 5)
 		--print("Closest City: "..dist)
 
 		if dist <= 3 then
 			-- This plot is owned, and in range of a city, so can only improve.
-			pPlot:SetProperty("Development_CB_Method", 2)
-			ChangeThreshold(DevPropertyID, plotID, WTI_Config.AutoImproveThreshold)
+			newMethod = 2
 
 			-- Iterate over the adjacent plots to initialize any plots that are on the boundary
 			-- This is so they can be checked for building cities
@@ -236,15 +242,27 @@ function DetermineMethod(pPlot)
 				if adjPlot ~= nil then
 					local owner = adjPlot:GetOwner()
 					if owner < 0 then
-						UpdatePlot(DevPropertyID, adjPlot:GetIndex())
+						TG.UpdatePlot(DevPropertyID, adjPlot:GetIndex())
 					end
 				end
 			end
 		else
-			pPlot:SetProperty("Development_CB_Method", 3)
-			ChangeThreshold(DevPropertyID, plotID, WTI_Config.BuildCityThreshold)
+			newMethod = 3
 		end
 	end
+
+	if newMethod == 1 then
+		pPlot:SetProperty("Development_CB_Method", newMethod)
+		TG.ChangeThreshold(DevPropertyID, plotID, WTI_Config.ExpansionThreshold)
+	elseif newMethod == 2 then
+		pPlot:SetProperty("Development_CB_Method", newMethod)
+		TG.ChangeThreshold(DevPropertyID, plotID, WTI_Config.AutoImproveThreshold)
+	elseif newMethod == 3 then
+		pPlot:SetProperty("Development_CB_Method", 3)
+		TG.ChangeThreshold(DevPropertyID, plotID, WTI_Config.BuildCityThreshold)
+	end
+
+	return newMethod
 end
 
 function OnPlotInitialized(PropertyID, plotID : number)
@@ -386,7 +404,7 @@ function SumPlayersAdjacentDevelopment(pPlot)
 					maxPlotDev = thisPlayer[4]
 				end
 				
-				local plotDev = ReadValue(DevPropertyID, adjPlot)
+				local plotDev = TG.ReadValue(DevPropertyID, adjPlot)
 				if plotDev ~= nil then
 					if plotDev > maxPlotDev then
 						maxPlotDev = plotDev
@@ -420,27 +438,32 @@ end
 function TryClaimTile(pPlot)
 	--print("Claiming a tile!")
 	local HighestPlayerAdjDev, HighestPlot = SumPlayersAdjacentDevelopment(pPlot)
+	success = false
 
 	-- Claim the tile for whoever has the most adjacent development
 	if HighestPlayerAdjDev < 0 then
 		print("The tile could not be claimed by one player!")
 		local plotID = pPlot:GetIndex()
-		SnoozeTrigger(DevPropertyID, plotID, 1 * TurnMultiplier)
-		return
+		TG.SnoozeTrigger(DevPropertyID, plotID, 2 * TurnMultiplier)
 	else
 		if HighestPlot ~= nil then
 			local city = Cities.GetPlotWorkingCity(HighestPlot)
-			if city == nil then return; end
 
-			local distToCity = Map.GetPlotDistance(pPlot:GetX(), pPlot:GetY(), city:GetX(), city:GetY())
-			print("Claim dist = "..distToCity)
-			if distToCity <= 3 then
-				WorldBuilder.CityManager():SetPlotOwner(pPlot, city)
-			else
-				pPlot:SetOwner(city:GetOwner())
+			if city ~= nil then
+				local distToCity = Map.GetPlotDistance(pPlot:GetX(), pPlot:GetY(), city:GetX(), city:GetY())
+				--print("Claim dist = "..distToCity)
+				if distToCity <= 3 then
+					WorldBuilder.CityManager():SetPlotOwner(pPlot, city)
+				else
+					pPlot:SetOwner(city:GetOwner())
+				end
+
+				success = true
 			end
 		end
 	end
+
+	return success
 end
 
 function TryMakeImprovement(pPlot)
@@ -454,7 +477,7 @@ function TryMakeImprovement(pPlot)
 	local eImprovementType = GetAutoImprovementType(pPlot)
 	if eImprovementType < 0 then
 		print("Improvement couldn't be identified, can't improve, snoozing")
-		SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
+		TG.SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
 		return false
 	end
 
@@ -472,7 +495,7 @@ function TryMakeImprovement(pPlot)
 		if GameInfo.Improvements[eImprovementType].ImprovementType == "IMPROVEMENT_FISHERY" then
 			if not(IsAquacultureAvailable(Cities.GetPlotWorkingCity(pPlot:GetIndex()))) then
 				printIfPlayer(iPlayer, "Cannot build fisheries in this city");
-				SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
+				TG.SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
 				return false
 			end
 		end
@@ -501,12 +524,12 @@ function TryMakeImprovement(pPlot)
 			builtImprovement = true
 		else
 			printIfPlayer(iPlayer, "Failed to improve...");
-			SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
+			TG.SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
 			return false
 		end
 	else
 		printIfPlayer(iPlayer, "Plot cannot have the improvement, or player is missing a requirement");
-		SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
+		TG.SnoozeTrigger(DevPropertyID, pPlot:GetIndex(), 1 * TurnMultiplier)
 		return false
 	end
 	
@@ -524,10 +547,11 @@ function TryBuildCity(pPlot)
 	local owner = pPlot:GetOwner();
 	if owner < 0 then
 		local plotID = pPlot:GetIndex()
-		SnoozeTrigger(DevPropertyID, plotID, 2 * TurnMultiplier)
-		return
+		TG.SnoozeTrigger(DevPropertyID, plotID, 2 * TurnMultiplier)
+		return false
 	else
 		Players[owner]:GetCities():Create(pPlot:GetX(), pPlot:GetY())
+		return true
 	end
 end
 
@@ -567,15 +591,25 @@ function RegisterAllEvents()
 	--Events.NationalParkAdded.Add(OnNationalParkAdded)
 end
 
-improvements_initialized = false;
 function GameLoaded()
 	print("Game load complete")
-	if not(improvements_initialized) then
-		print("Initializing improvements")
-		NewGrowthProperty(DevPropertyID, Threshold, CalculateDevGrowth, ImprovementTrigger, -WTI_Config.ExpansionThreshold, WTI_Config.BuildCityThreshold * 1.2)
-		RegisterAllEvents()
-		improvements_initialized = true
-	end
+
+	TG.DefineGrowthProperty(
+		hmake PropertyListData {
+			ID				= DevPropertyID,
+			Threshold		= WTI_Config.ExpansionThreshold,
+			GrowthFunc      = CalculateDevGrowth,
+			Callback        = ImprovementTrigger,
+			MinVal          = -WTI_Config.ExpansionThreshold,
+			MaxVal          = WTI_Config.BuildCityThreshold * 1.2,
+			TriggerMode     = "ONCE",
+			TriggerTest     = nil,
+			ShowLens		= true,
+			ShowTooltip		= true
+		}
+	)
+
+	RegisterAllEvents()
 end
 Events.LoadGameViewStateDone.Add(GameLoaded)
 
@@ -584,7 +618,7 @@ function OnCityTileChanged(ownerID, cityID, iX, iY)
 	print("City Tile Changed: "..cityID)
 	local plotID = Map.GetPlot(iX, iY):GetIndex()
 
-	UpdatePlot(DevPropertyID, plotID)
+	TG.UpdatePlot(DevPropertyID, plotID)
 end
 function CityAdded(playerID, cityID, iX, iY)
 	print("City Added: "..cityID)
@@ -594,7 +628,7 @@ function CityAdded(playerID, cityID, iX, iY)
 	local plots = city:GetOwnedPlots()
 
 	for k,plot in pairs(plots) do
-		UpdatePlot(DevPropertyID, plot:GetIndex())
+		TG.UpdatePlot(DevPropertyID, plot:GetIndex())
 	end
 end
 function PopulationChanged(playerID, cityID, newPop)
@@ -607,7 +641,7 @@ function OnDistrictChanged (playerID, districtID, cityID, X, Y, districtIndex)
 	
 	local plotID = Map.GetPlot(X, Y):GetIndex()
 
-	UpdatePlot(DevPropertyID, plotID)
+	TG.UpdatePlot(DevPropertyID, plotID)
 end
 
 Events.BuildingAddedToMap.Add(function (X, Y, buildingID, playerID, cityID, percentComplete, isPillaged)
@@ -621,7 +655,7 @@ function OnNationalParkAdded(playerID, X, Y)
 	print("National Park Added!")
 	-- Provided tile is the bottom of the diamond, so the coordinates should be explicit
 	for _, plotID in ipairs(Game.GetNationalParks():GetAtLocation(X, Y)) do
-		RemovePlotFromTables(playerID, Map.GetPlotByIndex(plotID))
+		
 	end
 end
 
@@ -634,17 +668,20 @@ end)
 -- PLOT CHANGES
 function OnPlotChangeEvent(iX:number, iY:number)
 	--print("Plot Changed!")
-	UpdatePlot(DevPropertyID, Map.GetPlot(iX, iY):GetIndex())
+	TG.UpdatePlot(DevPropertyID, Map.GetPlot(iX, iY):GetIndex())
 end
 
 -- IMPROVEMENTS
 function OnImprovementAdded(iX, iY, eImprovement, playerID)
 	-- If an improvement is added by the player, the utilization should be set to at least the threshold
 	local plotID  = Map.GetPlot(iX, iY):GetIndex()
-	if notNilOrNegative(playerID) and plot ~= nil and eImprovement ~= iMeteor then
-		print("Improvement Added")
-		SetValue(DevPropertyID, plotID, WTI_Config.AutoImproveThreshold)
-		--UpdatePlot(DevPropertyID, plotID)
+	if notNilOrNegative(playerID) and plot ~= nil and eImprovement ~= iMeteor and eImprovement ~= iBarbCamp then
+		--print("Improvement Added")
+		local val = ReadValue(DevPropertyID, Map.GetPlotByIndex(plotID))
+		if val < WTI_Config.AutoImproveThreshold then
+			TG.SetValue(DevPropertyID, plotID, WTI_Config.AutoImproveThreshold)
+		end
+		TG.UpdatePlot(DevPropertyID, plotID)
 	end
 end
 
@@ -654,7 +691,7 @@ Events.ImprovementRemovedFromMap.Add(function (iX, iY, eImprovement, playerID)
 
 	if notNilOrNegative(playerID) and eImprovement ~= iBarbCamp and eImprovement ~= iGoodyHut then
 		print("Improvement Removed")
-		UpdatePlot(DevPropertyID, plot:GetIndex())
+		TG.UpdatePlot(DevPropertyID, plot:GetIndex())
 	end
 end );
 

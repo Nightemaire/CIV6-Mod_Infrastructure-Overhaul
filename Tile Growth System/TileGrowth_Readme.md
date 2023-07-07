@@ -2,7 +2,7 @@
 Plot Property Growth Event System
 
 # Overview
-This is intended to fill a gap in Civ 6 modding where working with and modifying plot properties can be a resource intensive endeavour. It specifically applies to situations where the plot property should change over time. When the property exists at every tile in the map, this can get unwieldy and require a lot of computation. In order to alleviate this, a property system that leverages dynamic events and growth rates to reduce the burden of needing to check every property all the time.
+This is intended to fill a gap in Civ 6 modding where working with and modifying plot properties can be a resource intensive endeavour. It specifically applies to situations where the plot property should change over time. When the property is defined at every tile in the map, this can get unwieldy and require a lot of computation if each tile also needs to be checked for some condition. In order to alleviate this, a property system that leverages dynamic events and growth rates to reduce the burden of needing to check every property all the time.
 
 # The Basics
 This would be the intended workflow of creating a growth property:
@@ -18,7 +18,6 @@ Plot_Data = {
 	LastUpdate 	    = Game.GetCurrentGameTurn(),			-- Contains the turn number of the last time the value was updated
 	Threshold       = PropertyData.DefaultThreshold,		-- The current threshold which the system uses to evaluate when the trigger should occur
 	TriggersOn 	    = TriggerTurn,							-- The estimated turn for when this plot should cross the specified threshold
-	CallbackFunc    = PropertyData.DefaultCallback,			-- The function that should be called when this plot crosses the threshold
 };
 
 -- Additionally, there is a table attached as a game property which contains indices of tiles that should trigger on any given turn.
