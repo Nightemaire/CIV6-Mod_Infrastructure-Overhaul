@@ -72,6 +72,7 @@ local i_Modern = GameInfo.Eras["ERA_MODERN"].Index;
 
 -- Yields
 local iFood = GameInfo.Yields["YIELD_FOOD"].Index
+local iGold = GameInfo.Yields["YIELD_GOLD"].Index
 local iProduction = GameInfo.Yields["YIELD_PRODUCTION"].Index
 local iFaith = GameInfo.Yields["YIELD_FAITH"].Index
 local iScience = GameInfo.Yields["YIELD_SCIENCE"].Index
@@ -135,15 +136,15 @@ print("City Threshold = "..WTI_Config.BuildCityThreshold);
 -- #region DEVELOPMENT MANAGEMENT
 -- ===========================================================================
 
-function ImprovementTrigger(plotID : number, direction : number)
+function ImprovementTrigger(plotID : number, edge : number)
 	if plotID ~= nil then
 		local pPlot = Map.GetPlotByIndex(plotID)
 		local CB_Method = pPlot:GetProperty("Development_CB_Method")
 
 		local success = false;
 		
-		if CB_Method ~= nil & direction > 0 then
-			print("Trigger method: "..CB_Method)
+		if CB_Method ~= nil and direction > 0 then
+			--print("Trigger method: "..CB_Method)
 			if CB_Method == 1 then
 				success = TryClaimTile(pPlot)
 			elseif CB_Method == 2 then
@@ -169,10 +170,8 @@ function ImprovementTrigger(plotID : number, direction : number)
 end
 
 function CalculateDevGrowth(plotID : number)
-	--print("Calculating Growth")
 	if plotID == nil then return nil; end
 	local plot = Map.GetPlotByIndex(plotID)
-	
 	-- Can't calc anything without a plot...
 	if plot == nil then return nil; end
 
@@ -182,7 +181,7 @@ function CalculateDevGrowth(plotID : number)
 	local appeal		= plot:GetAppeal()
 	local isFreshWater	= plot:IsFreshWater()
 	local hasRoute		= plot:IsRoute()
-	local yield			= plot:GetYield(iProduction) + plot:GetYield(iFood)
+	local yield			= plot:GetYield(iProduction) + plot:GetYield(iFood) + plot:GetYield(iGold)
 	local city 			= Cities.GetPlotWorkingCity(plotID)
 	local distToCity = 5;
 	if city ~= nil then
@@ -211,6 +210,8 @@ function CalculateDevGrowth(plotID : number)
 					
 	-- Add to the growth if the tile is being worked
 	if workerCount > 0 then growth = growth + WTI_Config.GROWTH_WORKED; end
+
+	--print("Growth: "..growth)
 
 	-- Scale the growth
 	return growth * WTI_Config.DevelopmentScalar
@@ -253,13 +254,19 @@ function DetermineMethod(pPlot)
 
 	if newMethod == 1 then
 		pPlot:SetProperty("Development_CB_Method", newMethod)
+		local max = WTI_Config.ExpansionThreshold * 1.2
 		TG.ChangeThreshold(DevPropertyID, plotID, WTI_Config.ExpansionThreshold)
+		TG.SetMaxAndMin(PropertyID, plotID, 0, max)
 	elseif newMethod == 2 then
 		pPlot:SetProperty("Development_CB_Method", newMethod)
+		local max = WTI_Config.AutoImproveThreshold * 1.2
 		TG.ChangeThreshold(DevPropertyID, plotID, WTI_Config.AutoImproveThreshold)
+		TG.SetMaxAndMin(PropertyID, plotID, 0, max)
 	elseif newMethod == 3 then
-		pPlot:SetProperty("Development_CB_Method", 3)
+		pPlot:SetProperty("Development_CB_Method", newMethod)
+		local max = WTI_Config.BuildCityThreshold * 1.2
 		TG.ChangeThreshold(DevPropertyID, plotID, WTI_Config.BuildCityThreshold)
+		TG.SetMaxAndMin(PropertyID, plotID, 0, max)
 	end
 
 	return newMethod
@@ -290,13 +297,13 @@ function GetAutoImprovementType(pPlot)
 	if notNilOrNegative(ePlotResource) then
 		-- Lookup the improvement type associated with this resource
 		eImprovement = ImprovementLUT[ePlotResource]
-
+		local imp = "None"
+		if eImprovement ~= nil then imp = eImprovement; end
+		print("Resource type is: "..ePlotResource..", improvement = "..imp)
 		-- If it exists, check to see if the tile can have this improvement
 		if notNilOrNegative(eImprovement) then
-			if (ImprovementBuilder.CanHaveImprovement(pPlot, eImprovement , NO_TEAM)) then
-				-- If it can be improved with this improvement, we return the index
-				return eImprovement
-			end
+			-- If it can be improved with this improvement, we return the index
+			return eImprovement
 		end
 		-- It can't be improved, we don't want to remove the resource, so go no further
 		return -1;
@@ -594,20 +601,7 @@ end
 function GameLoaded()
 	print("Game load complete")
 
-	TG.DefineGrowthProperty(
-		hmake PropertyListData {
-			ID				= DevPropertyID,
-			Threshold		= WTI_Config.ExpansionThreshold,
-			GrowthFunc      = CalculateDevGrowth,
-			Callback        = ImprovementTrigger,
-			MinVal          = -WTI_Config.ExpansionThreshold,
-			MaxVal          = WTI_Config.BuildCityThreshold * 1.2,
-			TriggerMode     = "ONCE",
-			TriggerTest     = nil,
-			ShowLens		= true,
-			ShowTooltip		= true
-		}
-	)
+	TG.DefineGrowthProperty(DevData)
 
 	RegisterAllEvents()
 end
@@ -615,11 +609,12 @@ Events.LoadGameViewStateDone.Add(GameLoaded)
 
 -- CITY EVENTS
 function OnCityTileChanged(ownerID, cityID, iX, iY)
-	print("City Tile Changed: "..cityID)
+	--print("City Tile Changed: "..cityID)
 	local plotID = Map.GetPlot(iX, iY):GetIndex()
 
 	TG.UpdatePlot(DevPropertyID, plotID)
 end
+
 function CityAdded(playerID, cityID, iX, iY)
 	print("City Added: "..cityID)
 	local plotID = Map.GetPlot(iX, iY):GetIndex()
@@ -631,19 +626,84 @@ function CityAdded(playerID, cityID, iX, iY)
 		TG.UpdatePlot(DevPropertyID, plot:GetIndex())
 	end
 end
+
 function PopulationChanged(playerID, cityID, newPop)
 
 end
 
--- DISTRICT UPDATES
-function OnDistrictChanged (playerID, districtID, cityID, X, Y, districtIndex)
-	print("District Added")
+function OnDistrictBuildProgressChanged(playerID:number, districtID, cityID, iX, iY, districtType, era, civilization, percentComplete, Appeal, isPillaged)
 	
-	local plotID = Map.GetPlot(X, Y):GetIndex()
+	if (percentComplete == 100) then
+		print("District completed, creating intra-city routes...")
 
-	TG.UpdatePlot(DevPropertyID, plotID)
+		local city = Players[playerID]:GetCities():FindID(cityID)
+		local cityPlot = Map.GetPlot(city:GetX(), city:GetY())
+		local thisPlot = Map.GetPlot(iX, iY)
+		
+		local startPlot = nil
+
+		-- If it's water (harbor or water park), find an owned land tile nearest to the city to start from
+		if thisPlot:IsWater() then
+			-- Check all adjacent tiles for land
+			local candidates = {}	
+			for i = 0, 5 do
+				adjPlot = Map.GetAdjacentPlot(thisPlot:GetX(), thisPlot:GetY(), i)
+				if not(adjPlot:IsWater()) and adjPlot:GetOwner() == playerID then
+					table.insert(candidates, adjPlot)
+				end
+			end
+
+			-- Pick the one which is closest to the city
+			if #(candidates) > 0 then
+				if #(candidates) == 1 then
+					startPlot = candidates[1]
+				else
+					local minDist = 9999
+					local cityX = cityPlot:GetX()
+					local cityY = cityPlot:GetY()
+					for k,iPlot in orderedPairs(candidates) do
+						local thisDist = Map.GetPlotDistance(cityX, cityY, iPlot:GetX(), iPlot:GetY())
+						if thisDist < minDist then
+							startPlot = iPlot
+						end
+					end
+				end
+			else
+				print("Failed to find candidate land tiles to connect this water district")
+			end
+		else
+			startPlot = thisPlot
+		end
+
+		if startPlot ~= nil then
+			-- Connect to the city
+			CreateRouteFromTo(startPlot, cityPlot, 2)
+
+			-- Connect to other nearby districts
+			local Plots = city:GetOwnedPlots()
+
+			for k,plot in pairs(Plots) do
+				if plot:GetIndex() ~= startPlot:GetIndex() and not(plot:IsWater()) then
+					if plot:GetDistrictID() >= 0 then
+						-- Quick range check
+						local plotDist = Map.GetPlotDistance(plot:GetX(), plot:GetY(), startPlot:GetX(), startPlot:GetY())
+						if plotDist <= District_Connect_Range then
+							CreateRouteFromTo(startPlot, plot, 2)
+						end
+					end
+				end
+			end
+		end
+	else
+		
+	end
 end
 
+function OnBuildingConstructed(playerID, cityID, buildingID, plotID, bOriginalConstruction)
+	if bOriginalConstruction then
+		
+	end
+end
 Events.BuildingAddedToMap.Add(function (X, Y, buildingID, playerID, cityID, percentComplete, isPillaged)
 	-- Mostly interested in checking for a wonder here to remove the tile
 	--print("Building Added!")
@@ -791,14 +851,6 @@ function printIfPlayer(ID, text)
 	if ID == 0 then print(turnText..text); end
 end
 
--- DEBUG AND TEST FUNCTIONS
-function SpawnBarbOnPlot(plot : object)
-	local barbPlayer = PlayerManager.GetAliveBarbarians()[1];
-
-	barbPlayer:GetUnits():Create(m_eWarrior, plot:GetX(), plot:GetY());
-	print("YOU SHALL BURN FOR ETERNITY!");
-end
-
 -- #region Plot Iterator Functions
 -- Author: whoward69; URL: https://forums.civfanatics.com/threads/border-and-area-plot-iterators.474634/
 -- convert funcs odd-r offset to axial. URL: http://www.redblobgames.com/grids/hexagons/
@@ -942,6 +994,17 @@ end
 -- #endregion End of iterator code --------------------
 -- #endregion 
 
---GameTurnStart()
+DevData = hmake PropertyListData {
+	ID					= DevPropertyID,
+	DefaultThreshold	= WTI_Config.ExpansionThreshold,
+	GrowthCalcFunc      = CalculateDevGrowth,
+	CallbackFunc      	= ImprovementTrigger,
+	MinVal          	= -WTI_Config.ExpansionThreshold,
+	MaxVal          	= WTI_Config.BuildCityThreshold * 1.2,
+	TriggerMode     	= "ONCE",
+	TriggerTest     	= nil,
+	ShowLens			= true,
+	ShowTooltip			= true
+}
 
-print("IMPROVEMENTS IMPROVED.");
+print("IMPROVEMENTS IMPROVED.")

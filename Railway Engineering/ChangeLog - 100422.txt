@@ -9,7 +9,7 @@ Railway Engineer
 Railyard
 - Reduced the production yield from 4 to 2
 - When complete, railroads will now be built from the Railyard to the City
-- Reduced Great Engineer points to from 2 to 1
+- Reduced Great Engineer points from 2 to 1
 
 Theodore Judah
 - Now has 2 charges - each still builds a railyard and increases regional range
@@ -23,7 +23,7 @@ Tunnels
 
 == New Features ==
 
-Transcontinental Railstation
+Building: Transcontinental Railstation
 - A new building in the city center (+5 gold, +2 Great Merchant Points)
 - Only two can exist in your empire
 - They require a lot of production - so place them wisely...
@@ -39,3 +39,5 @@ Transcontinental Railroad
 - The route will tunnel through mountains if it makes sense
 - The route prefers flatland tiles over hills, but also attempts to maintain a straight course where possible
 
+Building: Subway Network
+- 
